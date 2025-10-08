@@ -259,3 +259,45 @@ class TestABTestingIntegration:
             variant = response.json()["variant"]
             assert variant == "control"
 
+
+@pytest.mark.contract
+class TestABTestingContract:
+    """Contract tests for A/B testing API"""
+    
+    def test_ab_test_response_schema(self, client, created_screen, sample_ab_test_data):
+        """Test A/B test response matches expected schema"""
+        data = sample_ab_test_data.copy()
+        data["screen_id"] = created_screen["id"]
+        
+        response = client.post("/api/ab-testing/", json=data)
+        test = response.json()
+        
+        required_fields = [
+            "id", "name", "description", "screen_id", "variants",
+            "traffic_allocation", "is_active", "created_at"
+        ]
+        
+        for field in required_fields:
+            assert field in test
+        
+        assert isinstance(test["id"], int)
+        assert isinstance(test["variants"], dict)
+        assert isinstance(test["traffic_allocation"], float)
+        assert isinstance(test["is_active"], bool)
+    
+    def test_variant_response_schema(self, client, created_screen):
+        """Test variant response matches expected schema"""
+        response = client.get(
+            f"/api/ab-testing/screen/{created_screen['id']}/variant",
+            params={"user_id": "test_user"}
+        )
+        variant = response.json()
+        
+        required_fields = ["variant", "config", "test_id"]
+        
+        for field in required_fields:
+            assert field in variant
+        
+        assert isinstance(variant["variant"], str)
+        assert isinstance(variant["config"], dict)
+
