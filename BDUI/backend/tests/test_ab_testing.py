@@ -152,4 +152,62 @@ class TestABTestingAPI:
         
         get_response = client.get(f"/api/ab-testing/{test['id']}")
         assert get_response.status_code == status.HTTP_404_NOT_FOUND
+    
+    def test_get_screen_variant_with_active_test(self, client, created_screen, sample_ab_test_data):
+        """Test getting variant for a screen with active A/B test"""
+        data = sample_ab_test_data.copy()
+        data["screen_id"] = created_screen["id"]
+        
+        create_response = client.post("/api/ab-testing/", json=data)
+        test = create_response.json()
+        client.post(f"/api/ab-testing/{test['id']}/activate")
+        
+        response = client.get(
+            f"/api/ab-testing/screen/{created_screen['id']}/variant",
+            params={"user_id": "test_user_123", "session_id": "test_session_123"}
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        variant = response.json()
+        
+        assert "variant" in variant
+        assert "config" in variant
+        assert "test_id" in variant
+        assert variant["variant"] in ["control", "variant_a", "variant_b"]
+    
+    def test_get_screen_variant_without_active_test(self, client, created_screen):
+        """Test getting variant for a screen without active A/B test"""
+        response = client.get(
+            f"/api/ab-testing/screen/{created_screen['id']}/variant",
+            params={"user_id": "test_user_123"}
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        variant = response.json()
+        
+        assert variant["variant"] == "control"
+        assert variant["config"] == created_screen["config"]
+        assert variant["test_id"] is None
+    
+    def test_variant_deterministic_for_same_user(self, client, created_screen, sample_ab_test_data):
+        """Test that same user always gets same variant"""
+        data = sample_ab_test_data.copy()
+        data["screen_id"] = created_screen["id"]
+        
+        create_response = client.post("/api/ab-testing/", json=data)
+        test = create_response.json()
+        client.post(f"/api/ab-testing/{test['id']}/activate")
+        
+        user_id = "consistent_user"
+        variants = []
+        
+        for i in range(5):
+            response = client.get(
+                f"/api/ab-testing/screen/{created_screen['id']}/variant",
+                params={"user_id": user_id, "session_id": f"session_{i}"}
+            )
+            variant = response.json()
+            variants.append(variant["variant"])
+        
+        assert len(set(variants)) == 1
 
