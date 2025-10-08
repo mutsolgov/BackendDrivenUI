@@ -211,3 +211,51 @@ class TestABTestingAPI:
         
         assert len(set(variants)) == 1
 
+
+@pytest.mark.integration
+class TestABTestingIntegration:
+    """Integration tests for A/B testing"""
+    
+    def test_ab_testing_workflow(self, client, created_screen, sample_ab_test_data):
+        """Test complete A/B testing workflow"""
+        data = sample_ab_test_data.copy()
+        data["screen_id"] = created_screen["id"]
+        
+        create_response = client.post("/api/ab-testing/", json=data)
+        test = create_response.json()
+        
+        client.post(f"/api/ab-testing/{test['id']}/activate")
+        
+        variants_count = {"control": 0, "variant_a": 0, "variant_b": 0}
+        
+        for i in range(100):
+            response = client.get(
+                f"/api/ab-testing/screen/{created_screen['id']}/variant",
+                params={"user_id": f"user_{i}"}
+            )
+            variant = response.json()["variant"]
+            if variant in variants_count:
+                variants_count[variant] += 1
+        
+        client.post(f"/api/ab-testing/{test['id']}/deactivate")
+        
+        assert variants_count["variant_a"] > 0 or variants_count["variant_b"] > 0
+    
+    def test_traffic_allocation(self, client, created_screen, sample_ab_test_data):
+        """Test that traffic allocation is respected"""
+        data = sample_ab_test_data.copy()
+        data["screen_id"] = created_screen["id"]
+        data["traffic_allocation"] = 0.0  
+        
+        create_response = client.post("/api/ab-testing/", json=data)
+        test = create_response.json()
+        client.post(f"/api/ab-testing/{test['id']}/activate")
+        
+        for i in range(10):
+            response = client.get(
+                f"/api/ab-testing/screen/{created_screen['id']}/variant",
+                params={"user_id": f"user_{i}"}
+            )
+            variant = response.json()["variant"]
+            assert variant == "control"
+
