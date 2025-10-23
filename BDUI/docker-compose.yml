@@ -1,4 +1,8 @@
 services:
   postgres:
     image: postgres:15
-   
+    environment:
+      POSTGRES_DB: bdui
+      POSTGRES_USER: bdui_user
+      POSTGRES_PASSWORD: bdui_password
+    
