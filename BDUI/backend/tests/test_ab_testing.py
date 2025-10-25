@@ -55,4 +55,54 @@ class TestABTestingAPI:
         assert response.status_code == status.HTTP_200_OK
         tests = response.json()
         assert len(tests) >= 3
-
+    
+    def test_get_active_ab_tests(self, client, created_screen, sample_ab_test_data):
+        """Test filtering A/B tests by active status"""
+        data = sample_ab_test_data.copy()
+        data["screen_id"] = created_screen["id"]
+        data["name"] = "Active Test"
+        
+        response = client.post("/api/ab-testing/", json=data)
+        test = response.json()
+        
+        client.post(f"/api/ab-testing/{test['id']}/activate")
+        
+        response = client.get("/api/ab-testing/?is_active=true")
+        
+        assert response.status_code == status.HTTP_200_OK
+        tests = response.json()
+        assert all(t["is_active"] for t in tests)
+    
+    def test_get_ab_test_by_id(self, client, created_screen, sample_ab_test_data):
+        """Test getting A/B test by ID"""
+        data = sample_ab_test_data.copy()
+        data["screen_id"] = created_screen["id"]
+        
+        create_response = client.post("/api/ab-testing/", json=data)
+        test = create_response.json()
+        
+        response = client.get(f"/api/ab-testing/{test['id']}")
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["id"] == test["id"]
+    
+    def test_update_ab_test(self, client, created_screen, sample_ab_test_data):
+        """Test updating an A/B test"""
+        data = sample_ab_test_data.copy()
+        data["screen_id"] = created_screen["id"]
+        
+        create_response = client.post("/api/ab-testing/", json=data)
+        test = create_response.json()
+        
+        update_data = {
+            "description": "Updated description",
+            "traffic_allocation": 0.7
+        }
+        
+        response = client.put(f"/api/ab-testing/{test['id']}", json=update_data)
+        
+        assert response.status_code == status.HTTP_200_OK
+        updated = response.json()
+        assert updated["description"] == "Updated description"
+        assert updated["traffic_allocation"] == 0.7
+ 
