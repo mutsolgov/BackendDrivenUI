@@ -105,4 +105,51 @@ class TestABTestingAPI:
         updated = response.json()
         assert updated["description"] == "Updated description"
         assert updated["traffic_allocation"] == 0.7
- 
+    
+    def test_activate_ab_test(self, client, created_screen, sample_ab_test_data):
+        """Test activating an A/B test"""
+        data = sample_ab_test_data.copy()
+        data["screen_id"] = created_screen["id"]
+        
+        create_response = client.post("/api/ab-testing/", json=data)
+        test = create_response.json()
+        
+        response = client.post(f"/api/ab-testing/{test['id']}/activate")
+        
+        assert response.status_code == status.HTTP_200_OK
+        
+        get_response = client.get(f"/api/ab-testing/{test['id']}")
+        assert get_response.json()["is_active"] == True
+    
+    def test_deactivate_ab_test(self, client, created_screen, sample_ab_test_data):
+        """Test deactivating an A/B test"""
+        data = sample_ab_test_data.copy()
+        data["screen_id"] = created_screen["id"]
+        
+        create_response = client.post("/api/ab-testing/", json=data)
+        test = create_response.json()
+        
+        client.post(f"/api/ab-testing/{test['id']}/activate")
+        
+        response = client.post(f"/api/ab-testing/{test['id']}/deactivate")
+        
+        assert response.status_code == status.HTTP_200_OK
+        
+        get_response = client.get(f"/api/ab-testing/{test['id']}")
+        assert get_response.json()["is_active"] == False
+    
+    def test_delete_ab_test(self, client, created_screen, sample_ab_test_data):
+        """Test deleting an A/B test"""
+        data = sample_ab_test_data.copy()
+        data["screen_id"] = created_screen["id"]
+        
+        create_response = client.post("/api/ab-testing/", json=data)
+        test = create_response.json()
+        
+        response = client.delete(f"/api/ab-testing/{test['id']}")
+        
+        assert response.status_code == status.HTTP_200_OK
+        
+        get_response = client.get(f"/api/ab-testing/{test['id']}")
+        assert get_response.status_code == status.HTTP_404_NOT_FOUND
+
