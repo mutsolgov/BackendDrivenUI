@@ -41,3 +41,7 @@ services:
       redis:
         condition: service_started
 
+  admin-panel:
+    build:
+      context: ./admin-panel
+      dockerfile: Dockerfile
