@@ -68,7 +68,7 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
       - WDS_SOCKET_PORT=0
-
-
-
+    volumes:
+      - ./client:/app
+      - /app/node_modules
 
