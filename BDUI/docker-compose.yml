@@ -56,4 +56,8 @@ services:
       - ./admin-panel:/app
       - /app/node_modules
 
-  
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+   
