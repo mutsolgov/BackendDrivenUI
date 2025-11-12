@@ -74,3 +74,28 @@ export const ApiProvider = ({ children }) => {
     getCategories: () => api.get('/api/templates/categories/list'),
   };
 
+  return (
+    <ApiContext.Provider value={{
+      screens: screensApi,
+      components: componentsApi,
+      analytics: analyticsApi,
+      abTesting: abTestingApi,
+      templates: templatesApi,
+    }}>
+      {children}
+    </ApiContext.Provider>
+  );
+};
+
+export const useApi = () => {
+  const context = useContext(ApiContext);
+  if (!context) {
+    throw new Error('useApi must be used within an ApiProvider');
+  }
+  return context;
+};
+
+
+
+
+
