@@ -33,4 +33,20 @@ export const ApiProvider = ({ children }) => {
       }),
   };
 
+  const componentsApi = {
+    getAll: (params = {}) => api.get('/api/components', { params }),
+    getById: (id) => api.get(`/api/components/${id}`),
+    create: (data) => api.post('/api/components', data),
+    update: (id, data) => api.put(`/api/components/${id}`, data),
+    delete: (id) => api.delete(`/api/components/${id}`),
+    getCategories: () => api.get('/api/components/categories/list'),
+  };
+
+  const analyticsApi = {
+    track: (event) => api.post('/api/analytics/track', event),
+    getEvents: (params = {}) => api.get('/api/analytics/events', { params }),
+    getEventsCount: (params = {}) => api.get('/api/analytics/events/count', { params }),
+    getStats: (screenId, days = 7) => api.get(`/api/analytics/stats/${screenId}`, { params: { days } }),
+    getOverview: (days = 7) => api.get('/api/analytics/overview', { params: { days } }),
+  };
 
