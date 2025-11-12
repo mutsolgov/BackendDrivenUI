@@ -50,3 +50,27 @@ export const ApiProvider = ({ children }) => {
     getOverview: (days = 7) => api.get('/api/analytics/overview', { params: { days } }),
   };
 
+  const abTestingApi = {
+    getAll: (params = {}) => api.get('/api/ab-testing', { params }),
+    getById: (id) => api.get(`/api/ab-testing/${id}`),
+    create: (data) => api.post('/api/ab-testing', data),
+    update: (id, data) => api.put(`/api/ab-testing/${id}`, data),
+    delete: (id) => api.delete(`/api/ab-testing/${id}`),
+    activate: (id) => api.post(`/api/ab-testing/${id}/activate`),
+    deactivate: (id) => api.post(`/api/ab-testing/${id}/deactivate`),
+    getVariant: (screenId, userId, sessionId) => 
+      api.get(`/api/ab-testing/screen/${screenId}/variant`, { 
+        params: { user_id: userId, session_id: sessionId } 
+      }),
+  };
+
+  const templatesApi = {
+    getAll: (params = {}) => api.get('/api/templates', { params }),
+    getById: (id) => api.get(`/api/templates/${id}`),
+    create: (data) => api.post('/api/templates', data),
+    update: (id, data) => api.put(`/api/templates/${id}`, data),
+    delete: (id) => api.delete(`/api/templates/${id}`),
+    inherit: (id, newName) => api.post(`/api/templates/${id}/inherit`, null, { params: { new_name: newName } }),
+    getCategories: () => api.get('/api/templates/categories/list'),
+  };
+
