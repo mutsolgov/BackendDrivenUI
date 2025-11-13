@@ -33,4 +33,30 @@ export const useAdminWebSocket = (onMessage) => {
         ws.send(JSON.stringify({ type: 'ping' }));
       };
 
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'pong') {
+            return;
+          }
+          
+          console.log('📨 Admin WebSocket: Message received', data);
+          
+          if (onMessageRef.current) {
+            onMessageRef.current(data);
+          }
+        } catch (err) {
+          console.error('❌ Admin WebSocket: Parse error', err);
+        }
+      };
 
+      ws.onclose = (event) => {
+        console.log('🔌 Admin WebSocket: Disconnected', event.code);
+        setIsConnected(false);
+        wsRef.current = null;
+        
+        if (reconnectAttempts.current < maxReconnectAttempts) {
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+          console.log(`🔄 Admin WebSocket: Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
+    
