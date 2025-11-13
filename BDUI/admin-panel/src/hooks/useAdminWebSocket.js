@@ -59,4 +59,21 @@ export const useAdminWebSocket = (onMessage) => {
         if (reconnectAttempts.current < maxReconnectAttempts) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
           console.log(`🔄 Admin WebSocket: Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
-    
+          
+          reconnectTimeoutRef.current = setTimeout(() => {
+            reconnectAttempts.current++;
+            connect();
+          }, delay);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('❌ Admin WebSocket: Error', error);
+      };
+
+      wsRef.current = ws;
+    } catch (err) {
+      console.error('❌ Admin WebSocket: Failed to create connection', err);
+    }
+  }, []); 
+
