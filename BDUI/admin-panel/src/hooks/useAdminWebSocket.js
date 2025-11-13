@@ -77,3 +77,30 @@ export const useAdminWebSocket = (onMessage) => {
     }
   }, []); 
 
+  const disconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+    
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    setIsConnected(false);
+  }, []);
+
+  useEffect(() => {
+    connect();
+    
+    return () => {
+      disconnect();
+    };
+  }, [connect, disconnect]);
+
+  return {
+    isConnected,
+    disconnect,
+    reconnect: connect
+  };
+};
+
