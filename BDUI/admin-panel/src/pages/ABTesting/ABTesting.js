@@ -103,3 +103,107 @@ const ABTesting = () => {
       message.error('Ошибка создания A/B теста');
     }
   };
+
+  const handleUpdate = async (values) => {
+    try {
+      const variants = JSON.parse(values.variants);
+      const testData = {
+        ...values,
+        variants,
+        start_date: values.dateRange?.[0]?.toISOString(),
+        end_date: values.dateRange?.[1]?.toISOString(),
+      };
+      
+      await api.abTesting.update(editingTest.id, testData);
+      message.success('A/B тест обновлен успешно');
+      setModalVisible(false);
+      setEditingTest(null);
+      form.resetFields();
+      fetchTests();
+    } catch (error) {
+      message.error('Ошибка обновления A/B теста');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await api.abTesting.delete(id);
+      message.success('A/B тест удален успешно');
+      fetchTests();
+    } catch (error) {
+      message.error('Ошибка удаления A/B теста');
+    }
+  };
+
+  const handleActivate = async (id) => {
+    try {
+      await api.abTesting.activate(id);
+      message.success('A/B тест активирован');
+      fetchTests();
+    } catch (error) {
+      message.error('Ошибка активации A/B теста');
+    }
+  };
+
+  const handleDeactivate = async (id) => {
+    try {
+      await api.abTesting.deactivate(id);
+      message.success('A/B тест деактивирован');
+      fetchTests();
+    } catch (error) {
+      message.error('Ошибка деактивации A/B теста');
+    }
+  };
+
+  const openCreateModal = () => {
+    setEditingTest(null);
+    form.resetFields();
+    form.setFieldsValue({
+      traffic_allocation: 0.5,
+      variants: JSON.stringify({
+        variant_a: { components: [] },
+        variant_b: { components: [] }
+      }, null, 2)
+    });
+    setModalVisible(true);
+  };
+
+  const openEditModal = (test) => {
+    setEditingTest(test);
+    const dateRange = test.start_date && test.end_date ? 
+      [dayjs(test.start_date), dayjs(test.end_date)] : null;
+    
+    form.setFieldsValue({
+      ...test,
+      variants: JSON.stringify(test.variants, null, 2),
+      dateRange
+    });
+    setModalVisible(true);
+  };
+
+  const columns = [
+    {
+      title: 'Название',
+      dataIndex: 'name',
+      key: 'name',
+    },
+    {
+      title: 'Экран',
+      dataIndex: 'screen_id',
+      key: 'screen_id',
+      render: (screenId) => {
+        const screen = screens.find(s => s.id === screenId);
+        return screen ? screen.title : `Screen #${screenId}`;
+      },
+    },
+    {
+      title: 'Статус',
+      dataIndex: 'is_active',
+      key: 'is_active',
+      render: (isActive) => (
+        <Tag color={isActive ? 'success' : 'default'}>
+          {isActive ? 'Активен' : 'Неактивен'}
+        </Tag>
+      ),
+    },
+    
