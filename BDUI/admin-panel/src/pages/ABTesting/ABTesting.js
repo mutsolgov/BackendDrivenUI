@@ -206,4 +206,98 @@ const ABTesting = () => {
         </Tag>
       ),
     },
-    
+    {
+      title: 'Трафик',
+      dataIndex: 'traffic_allocation',
+      key: 'traffic_allocation',
+      render: (allocation) => `${Math.round(allocation * 100)}%`,
+    },
+    {
+      title: 'Варианты',
+      dataIndex: 'variants',
+      key: 'variants',
+      render: (variants) => Object.keys(variants || {}).join(', '),
+    },
+    {
+      title: 'Период',
+      key: 'period',
+      render: (_, record) => {
+        if (record.start_date && record.end_date) {
+          return `${dayjs(record.start_date).format('DD.MM.YYYY')} - ${dayjs(record.end_date).format('DD.MM.YYYY')}`;
+        }
+        return '-';
+      },
+    },
+    {
+      title: 'Действия',
+      key: 'actions',
+      render: (_, record) => (
+        <Space size="middle">
+          {record.is_active ? (
+            <Button
+              icon={<PauseCircleOutlined />}
+              onClick={() => handleDeactivate(record.id)}
+              size="small"
+            >
+              Остановить
+            </Button>
+          ) : (
+            <Button
+              type="primary"
+              icon={<PlayCircleOutlined />}
+              onClick={() => handleActivate(record.id)}
+              size="small"
+            >
+              Запустить
+            </Button>
+          )}
+          <Button
+            icon={<EditOutlined />}
+            onClick={() => openEditModal(record)}
+            size="small"
+          >
+            Редактировать
+          </Button>
+          <Popconfirm
+            title="Вы уверены, что хотите удалить этот A/B тест?"
+            onConfirm={() => handleDelete(record.id)}
+            okText="Да"
+            cancelText="Нет"
+          >
+            <Button
+              danger
+              icon={<DeleteOutlined />}
+              size="small"
+            >
+              Удалить
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>A/B тестирование</h2>
+        <Space>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => {
+              fetchTests();
+              fetchScreens();
+            }}
+            disabled={loading}
+          >
+            Обновить
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={openCreateModal}
+          >
+            Создать A/B тест
+          </Button>
+        </Space>
+      </div>
