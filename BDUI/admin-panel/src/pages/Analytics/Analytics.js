@@ -212,3 +212,103 @@ const Analytics = () => {
         />
       </div>
 
+      {loading ? (
+        <Spin size="large" style={{ display: 'block', textAlign: 'center', marginTop: 100 }} />
+      ) : screenStats ? (
+        <>
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="Просмотры"
+                  value={screenStats.total_views}
+                  valueStyle={{ color: '#3f8600' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="Уникальные пользователи"
+                  value={screenStats.unique_users}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="Средняя длительность сессии"
+                  value={Math.round(screenStats.avg_session_duration)}
+                  suffix="сек"
+                  valueStyle={{ color: '#722ed1' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="Активных компонентов"
+                  value={screenStats.active_components_count || screenStats.most_used_components.length}
+                  valueStyle={{ color: '#eb2f96' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Col span={24}>
+              <Card title="Популярные компоненты">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={screenStats.most_used_components.slice(0, 10)}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="component_id" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#1890ff" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+            </Col>
+          </Row>
+
+          <Card title={`События (${events.length} из ${pagination.total})`}>
+            <div style={{ marginBottom: 16, fontSize: '12px', color: '#666' }}>
+              Debug: current={pagination.current}, pageSize={pagination.pageSize}, total={pagination.total}, selectedScreen={selectedScreen}
+            </div>
+            <Table
+              columns={eventColumns}
+              dataSource={events}
+              rowKey={(record, index) => record.id || index}
+              loading={eventsLoading}
+              pagination={{
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                total: pagination.total,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) => 
+                  `${range[0]}-${range[1]} из ${total} событий`,
+                pageSizeOptions: ['10', '20', '50', '100'],
+                onChange: handleTableChange,
+                onShowSizeChange: handleShowSizeChange,
+              }}
+              size="small"
+            />
+          </Card>
+        </>
+      ) : (
+        <div style={{ textAlign: 'center', marginTop: 100, color: '#999' }}>
+          Выберите экран для просмотра аналитики
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Analytics;
+
+
+
+
+
