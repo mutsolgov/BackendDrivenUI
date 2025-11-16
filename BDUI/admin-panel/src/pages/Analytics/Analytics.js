@@ -108,3 +108,107 @@ const Analytics = () => {
         setEvents([]);
       }
       
+      if (countResponse) {
+        setPagination(prev => ({
+          ...prev,
+          total: countResponse.data.total
+        }));
+      }
+      
+      console.log('Updated pagination:', { current: page, pageSize, total: countResponse ? countResponse.data.total : 'unchanged' });
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      setError('Ошибка загрузки событий');
+    } finally {
+      setEventsLoading(false);
+    }
+  };
+
+  const handleTableChange = (page, pageSize) => {
+    console.log('Table change - page:', page, 'pageSize:', pageSize);
+    console.log('Current pagination:', pagination);
+    
+    const fetchCount = pageSize !== pagination.pageSize;
+    console.log('Fetch count:', fetchCount, 'pageSize changed from', pagination.pageSize, 'to', pageSize);
+    
+    setPagination(prev => ({
+      ...prev,
+      current: page,
+      pageSize: pageSize
+    }));
+    
+    fetchEvents(page, pageSize, fetchCount);
+  };
+
+  const handleShowSizeChange = (current, size) => {
+    console.log('Show size change - current:', current, 'size:', size);
+    
+    setPagination(prev => ({
+      ...prev,
+      current: 1,
+      pageSize: size
+    }));
+    
+    fetchEvents(1, size, true);
+  };
+
+  const eventColumns = [
+    {
+      title: 'Время',
+      dataIndex: 'timestamp',
+      key: 'timestamp',
+      render: (timestamp) => dayjs(timestamp).format('DD.MM.YYYY HH:mm:ss'),
+      width: 150,
+    },
+    {
+      title: 'Тип события',
+      dataIndex: 'event_type',
+      key: 'event_type',
+    },
+    {
+      title: 'Компонент',
+      dataIndex: 'component_id',
+      key: 'component_id',
+      render: (componentId) => componentId || '-',
+    },
+    {
+      title: 'Платформа',
+      dataIndex: 'platform',
+      key: 'platform',
+    },
+    {
+      title: 'Пользователь',
+      dataIndex: 'user_id',
+      key: 'user_id',
+      render: (userId) => userId ? userId.substring(0, 8) + '...' : '-',
+    },
+  ];
+
+
+  if (error) {
+    return <Alert message={error} type="error" />;
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24, display: 'flex', gap: 16, alignItems: 'center' }}>
+        <h2>Аналитика</h2>
+        <Select
+          style={{ width: 200 }}
+          placeholder="Выберите экран"
+          value={selectedScreen}
+          onChange={setSelectedScreen}
+        >
+          {screens.map(screen => (
+            <Option key={screen.id} value={screen.id}>
+              {screen.title}
+            </Option>
+          ))}
+        </Select>
+        <RangePicker
+          value={dateRange}
+          onChange={setDateRange}
+          format="DD.MM.YYYY"
+        />
+      </div>
+
