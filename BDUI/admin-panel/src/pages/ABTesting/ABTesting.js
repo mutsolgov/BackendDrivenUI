@@ -301,3 +301,142 @@ const ABTesting = () => {
           </Button>
         </Space>
       </div>
+
+      {error && (
+        <Alert
+          message="Ошибка загрузки A/B тестов"
+          description={error}
+          type="error"
+          showIcon
+          style={{ marginBottom: 16 }}
+          action={
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={() => {
+                fetchTests();
+                fetchScreens();
+              }}
+            >
+              Повторить
+            </Button>
+          }
+        />
+      )}
+
+      <Table
+        columns={columns}
+        dataSource={tests}
+        rowKey="id"
+        loading={loading}
+        locale={{
+          emptyText: loading ? 'Загрузка...' : 'Нет A/B тестов'
+        }}
+        pagination={{
+          pageSize: 10,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          showTotal: (total) => `Всего ${total} тестов`,
+        }}
+      />
+
+      <Modal
+        title={editingTest ? 'Редактировать A/B тест' : 'Создать A/B тест'}
+        open={modalVisible}
+        onOk={() => form.submit()}
+        onCancel={() => {
+          setModalVisible(false);
+          setEditingTest(null);
+          form.resetFields();
+        }}
+        okText={editingTest ? 'Обновить' : 'Создать'}
+        cancelText="Отмена"
+        width={800}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={editingTest ? handleUpdate : handleCreate}
+        >
+          <Form.Item
+            name="name"
+            label="Название"
+            rules={[{ required: true, message: 'Введите название теста' }]}
+          >
+            <Input placeholder="Тест кнопки CTA" />
+          </Form.Item>
+
+          <Form.Item
+            name="description"
+            label="Описание"
+          >
+            <TextArea placeholder="Описание теста" rows={3} />
+          </Form.Item>
+
+          <Form.Item
+            name="screen_id"
+            label="Экран"
+            rules={[{ required: true, message: 'Выберите экран' }]}
+          >
+            <Select placeholder="Выберите экран">
+              {screens.map(screen => (
+                <Option key={screen.id} value={screen.id}>
+                  {screen.title}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="traffic_allocation"
+            label="Доля трафика"
+            rules={[{ required: true, message: 'Укажите долю трафика' }]}
+          >
+            <InputNumber
+              min={0}
+              max={1}
+              step={0.1}
+              style={{ width: '100%' }}
+              formatter={value => `${Math.round(value * 100)}%`}
+              parser={value => value.replace('%', '') / 100}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="dateRange"
+            label="Период проведения"
+          >
+            <RangePicker
+              style={{ width: '100%' }}
+              format="DD.MM.YYYY"
+              placeholder={['Дата начала', 'Дата окончания']}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="variants"
+            label="Варианты (JSON)"
+            rules={[{ required: true, message: 'Определите варианты теста' }]}
+          >
+            <Editor
+              height="300px"
+              language="json"
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+              }}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
+};
+
+export default ABTesting;
+
+
+
+
+
