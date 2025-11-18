@@ -199,3 +199,96 @@ const ComponentLibrary = () => {
         </div>
       ))}
 
+      <Modal
+        title={editingComponent ? 'Редактировать компонент' : 'Создать компонент'}
+        open={modalVisible}
+        onOk={() => form.submit()}
+        onCancel={() => {
+          setModalVisible(false);
+          setEditingComponent(null);
+          form.resetFields();
+        }}
+        okText={editingComponent ? 'Обновить' : 'Создать'}
+        cancelText="Отмена"
+        width={800}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={editingComponent ? handleUpdate : handleCreate}
+        >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="name"
+                label="Название"
+                rules={[{ required: true, message: 'Введите название компонента' }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="type"
+                label="Тип"
+                rules={[{ required: true, message: 'Введите тип компонента' }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            name="category"
+            label="Категория"
+            rules={[{ required: true, message: 'Выберите категорию' }]}
+          >
+            <Select allowClear showSearch>
+              {categories.map(cat => (
+                <Option key={cat} value={cat}>{categoryNames[cat] || cat}</Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="config"
+            label="Конфигурация (JSON)"
+            rules={[{ required: true, message: 'Введите конфигурацию компонента' }]}
+          >
+            <Editor
+              height="200px"
+              language="json"
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+              }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="props_schema"
+            label="Схема свойств (JSON)"
+          >
+            <Editor
+              height="200px"
+              language="json"
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+              }}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
+};
+
+export default ComponentLibrary;
+
+
+
+
+
