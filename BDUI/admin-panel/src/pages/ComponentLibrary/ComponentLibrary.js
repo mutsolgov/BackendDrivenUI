@@ -94,4 +94,65 @@ const ComponentLibrary = () => {
     }
   };
 
- 
+  const openCreateModal = () => {
+    setEditingComponent(null);
+    form.resetFields();
+    form.setFieldsValue({
+      config: JSON.stringify({
+        defaultProps: {}
+      }, null, 2),
+      props_schema: JSON.stringify({}, null, 2)
+    });
+    setModalVisible(true);
+  };
+
+  const openEditModal = (component) => {
+    setEditingComponent(component);
+    form.setFieldsValue({
+      ...component,
+      config: JSON.stringify(component.config, null, 2),
+      props_schema: JSON.stringify(component.props_schema || {}, null, 2)
+    });
+    setModalVisible(true);
+  };
+
+  const groupedComponents = components.reduce((groups, component) => {
+    const category = component.category || 'other';
+    if (!groups[category]) {
+      groups[category] = [];
+    }
+    groups[category].push(component);
+    return groups;
+  }, {});
+
+  const categoryNames = {
+    basic: 'Основные',
+    layout: 'Макет',
+    form: 'Формы',
+    data: 'Данные',
+    media: 'Медиа',
+    marketing: 'Маркетинг',
+    other: 'Другие'
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>Библиотека компонентов</h2>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+          Создать компонент
+        </Button>
+      </div>
+
+      {Object.entries(groupedComponents).map(([category, categoryComponents]) => (
+        <div key={category} style={{ marginBottom: 32 }}>
+          <h3 style={{ marginBottom: 16, borderBottom: '1px solid #d9d9d9', paddingBottom: 8 }}>
+            {categoryNames[category] || category}
+          </h3>
+          <Row gutter={[16, 16]}>
+            {categoryComponents.map(component => (
+              <Col key={component.id} xs={24} sm={12} md={8} lg={6}>
+                <Card
+                  size="small"
+                  title={
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
