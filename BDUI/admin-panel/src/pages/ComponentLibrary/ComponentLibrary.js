@@ -156,3 +156,46 @@ const ComponentLibrary = () => {
                   size="small"
                   title={
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>{component.name}</span>
+                      {component.is_system && <Tag color="blue">Системный</Tag>}
+                    </div>
+                  }
+                  extra={
+                    !component.is_system && (
+                      <div>
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<EditOutlined />}
+                          onClick={() => openEditModal(component)}
+                        />
+                        <Popconfirm
+                          title="Удалить компонент?"
+                          onConfirm={() => handleDelete(component.id)}
+                          okText="Да"
+                          cancelText="Нет"
+                        >
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                          />
+                        </Popconfirm>
+                      </div>
+                    )
+                  }
+                >
+                  <div style={{ marginBottom: 8 }}>
+                    <Tag color="green">{component.type}</Tag>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>
+                    {Object.keys(component.props_schema || {}).length} свойств
+                  </div>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </div>
+      ))}
+
