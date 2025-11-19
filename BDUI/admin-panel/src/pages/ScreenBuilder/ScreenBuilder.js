@@ -214,3 +214,115 @@ const ScreenBuilder = () => {
     setScreen({ ...screen, config: newConfig });
   };
 
+  const updateComponent = (componentId, updates) => {
+    console.log('updateComponent called:', componentId, updates);
+    
+    const updateComponentRecursive = (components) => {
+      return components.map(comp => {
+        if (comp.id === componentId) {
+          console.log('Updating component:', comp, 'with:', updates);
+          return { ...comp, ...updates };
+        }
+        if (comp.children) {
+          return { ...comp, children: updateComponentRecursive(comp.children) };
+        }
+        return comp;
+      });
+    };
+
+    const newConfig = { ...screen.config };
+    newConfig.components = updateComponentRecursive(newConfig.components || []);
+    setScreen({ ...screen, config: newConfig });
+    
+
+    if (selectedComponent?.id === componentId) {
+      console.log('Updating selectedComponent:', selectedComponent, 'with:', updates);
+      setSelectedComponent({ ...selectedComponent, ...updates });
+    }
+    
+  };
+
+
+  const deleteComponent = (componentId) => {
+    const deleteComponentRecursive = (components) => {
+      return components.filter(comp => {
+        if (comp.id === componentId) {
+          return false;
+        }
+        if (comp.children) {
+          comp.children = deleteComponentRecursive(comp.children);
+        }
+        return true;
+      });
+    };
+
+    const newConfig = { ...screen.config };
+    newConfig.components = deleteComponentRecursive(newConfig.components || []);
+    setScreen({ ...screen, config: newConfig });
+    
+    if (selectedComponent?.id === componentId) {
+      setSelectedComponent(null);
+    }
+  };
+
+  const moveComponentUp = (componentId) => {
+    const moveUpRecursive = (components) => {
+      for (let i = 0; i < components.length; i++) {
+        if (components[i].id === componentId) {
+          if (i > 0) {
+            const newComponents = [...components];
+            [newComponents[i - 1], newComponents[i]] = [newComponents[i], newComponents[i - 1]];
+            return { found: true, newComponents };
+          }
+          return { found: true, newComponents: components }; 
+        }
+        
+        if (components[i].children) {
+          const result = moveUpRecursive(components[i].children);
+          if (result.found) {
+            const newComponents = [...components];
+            newComponents[i] = {
+              ...newComponents[i],
+              children: result.newComponents
+            };
+            return { found: true, newComponents };
+          }
+        }
+      }
+      return { found: false, newComponents: components };
+    };
+
+    const result = moveUpRecursive(screen.config.components || []);
+    if (result.found) {
+      const newConfig = { ...screen.config, components: result.newComponents };
+      setScreen({ ...screen, config: newConfig });
+    }
+  };
+
+  const moveComponentDown = (componentId) => {
+    const moveDownRecursive = (components) => {
+      for (let i = 0; i < components.length; i++) {
+        if (components[i].id === componentId) {
+          if (i < components.length - 1) {
+            const newComponents = [...components];
+            [newComponents[i], newComponents[i + 1]] = [newComponents[i + 1], newComponents[i]];
+            return { found: true, newComponents };
+          }
+          return { found: true, newComponents: components }; 
+        }
+        
+        if (components[i].children) {
+          const result = moveDownRecursive(components[i].children);
+          if (result.found) {
+            const newComponents = [...components];
+            newComponents[i] = {
+              ...newComponents[i],
+              children: result.newComponents
+            };
+            return { found: true, newComponents };
+          }
+        }
+      }
+      return { found: false, newComponents: components };
+    };
+
