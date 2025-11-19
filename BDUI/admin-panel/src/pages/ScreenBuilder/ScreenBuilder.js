@@ -105,3 +105,112 @@ const ScreenBuilder = () => {
     }
   };
 
+  const fetchComponents = async () => {
+    try {
+      const response = await api.components.getAll();
+      setComponents(response.data);
+    } catch (error) {
+      message.error('Ошибка загрузки компонентов');
+    }
+  };
+
+  const handleSave = async () => {
+    if (!screen.name || !screen.title) {
+      message.error('Заполните обязательные поля');
+      return;
+    }
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    try {
+      setSaving(true);
+      setIsUpdating(true);
+      setPerformanceMetrics(null);
+      
+      const saveTimestamp = Date.now();
+      
+      if (id) {
+        const screenWithMetadata = {
+          ...screen,
+          metadata: { saveTimestamp }
+        };
+        
+        await api.screens.update(id, screenWithMetadata);
+        
+        timeoutRef.current = setTimeout(() => {
+          setIsUpdating(false);
+          timeoutRef.current = null;
+        }, 3000);
+      } else {
+        const response = await api.screens.create(screen);
+        navigate(`/screens/builder/${response.data.id}`);
+        message.success('Экран создан успешно');
+        setIsUpdating(false);
+      }
+    } catch (error) {
+      message.error('Ошибка сохранения экрана');
+      setIsUpdating(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+  
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handlePreview = () => {
+    const previewUrl = `http://localhost:3000/preview/${screen.name}?platform=${screen.platform}&locale=${screen.locale}`;
+    window.open(previewUrl, '_blank');
+  };
+
+  const handleComponentAdd = (component, targetContainerId = null) => {
+    const newComponent = {
+      id: uuidv4(),
+      type: component.name,
+      props: { ...component.config.defaultProps },
+      children: []
+    };
+
+    const newConfig = { ...screen.config };
+    
+    const isContainerType = selectedComponent?.type === 'Container' || selectedComponent?.type === 'Card';
+    
+    if (targetContainerId && selectedComponent?.id === targetContainerId && isContainerType) {
+      const addToContainer = (components) => {
+        return components.map(comp => {
+          if (comp.id === targetContainerId) {
+            return {
+              ...comp,
+              children: [...(comp.children || []), newComponent]
+            };
+          }
+          if (comp.children) {
+            return {
+              ...comp,
+              children: addToContainer(comp.children)
+            };
+          }
+          return comp;
+        });
+      };
+      
+      newConfig.components = addToContainer(newConfig.components || []);
+    } else {
+      newConfig.components = [...(newConfig.components || []), newComponent];
+    }
+    
+    setScreen({ ...screen, config: newConfig });
+  };
+
