@@ -326,3 +326,117 @@ const ScreenBuilder = () => {
       return { found: false, newComponents: components };
     };
 
+    const result = moveDownRecursive(screen.config.components || []);
+    if (result.found) {
+      const newConfig = { ...screen.config, components: result.newComponents };
+      setScreen({ ...screen, config: newConfig });
+    }
+  };
+
+  if (loading || !screen || components.length === 0) {
+    return <Spin size="large" style={{ display: 'block', textAlign: 'center', marginTop: 100 }} />;
+  }
+
+  return (
+    <div className="screen-builder">
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          <Input
+            placeholder="Название экрана"
+            value={screen.name}
+            onChange={(e) => setScreen({ ...screen, name: e.target.value })}
+            style={{ width: 200 }}
+          />
+          <Input
+            placeholder="Заголовок экрана"
+            value={screen.title}
+            onChange={(e) => setScreen({ ...screen, title: e.target.value })}
+            style={{ width: 300 }}
+          />
+          <Select
+            value={screen.platform}
+            onChange={(value) => setScreen({ ...screen, platform: value })}
+            style={{ width: 120 }}
+          >
+            <Option value="web">Web</Option>
+            <Option value="android">Android</Option>
+            <Option value="ios">iOS</Option>
+          </Select>
+          <Select
+            value={screen.locale}
+            onChange={(value) => setScreen({ ...screen, locale: value })}
+            style={{ width: 100 }}
+          >
+            <Option value="ru">RU</Option>
+            <Option value="en">EN</Option>
+          </Select>
+          <Switch
+            checked={screen.is_active}
+            onChange={(checked) => setScreen({ ...screen, is_active: checked })}
+            checkedChildren="Активен"
+            unCheckedChildren="Неактивен"
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button
+            icon={<EyeOutlined />}
+            onClick={handlePreview}
+            disabled={!screen.name}
+          >
+            Предпросмотр
+          </Button>
+          <Button
+            type="primary"
+            icon={<SaveOutlined />}
+            onClick={handleSave}
+            loading={saving}
+          >
+            Сохранить
+          </Button>
+        </div>
+      </div>
+
+      {/* Performance Monitor */}
+      <PerformanceMonitor 
+        isUpdating={isUpdating}
+        metrics={performanceMetrics}
+        onComplete={() => {
+          setIsUpdating(false);
+          setPerformanceMetrics(null);
+        }}
+      />
+
+      <div className="builder-content">
+        <ComponentPalette 
+          components={components} 
+          selectedComponent={selectedComponent}
+          onComponentAdd={(component) => handleComponentAdd(component, selectedComponent?.id)} 
+        />
+        
+        <Canvas
+          config={screen.config}
+          selectedComponent={selectedComponent}
+          onSelectComponent={setSelectedComponent}
+          onUpdateComponent={updateComponent}
+          onDeleteComponent={deleteComponent}
+          onAddToContainer={handleComponentAdd}
+          onMoveUp={moveComponentUp}
+          onMoveDown={moveComponentDown}
+        />
+        
+        <PropertiesPanel
+          selectedComponent={selectedComponent}
+          components={components}
+          onUpdateComponent={updateComponent}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default ScreenBuilder;
+
+
+
+
+
