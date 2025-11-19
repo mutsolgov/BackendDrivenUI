@@ -94,4 +94,51 @@ const Dashboard = () => {
                 <Tooltip />
                 <Line type="monotone" dataKey="events" stroke="#1890ff" name="События" />
                 <Line type="monotone" dataKey="unique_users" stroke="#52c41a" name="Пользователи" />
-            
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card title="Топ экранов">
+            <List
+              dataSource={topScreensData.slice(0, 5)}
+              renderItem={(item, index) => (
+                <List.Item>
+                  <List.Item.Meta
+                    title={`${index + 1}. ${item.title}`}
+                    description={`${item.views} просмотров`}
+                  />
+                </List.Item>
+              )}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {topScreensData.length > 0 && (
+        <Row style={{ marginTop: 16 }}>
+          <Col span={24}>
+            <Card title="Популярность экранов">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={topScreensData.slice(0, 10)}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="views" fill="#1890ff" />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+          </Col>
+        </Row>
+      )}
+    </div>
+  );
+};
+
+export default Dashboard;
+
+
+
+
+
