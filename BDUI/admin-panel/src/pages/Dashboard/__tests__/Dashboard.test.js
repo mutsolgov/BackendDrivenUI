@@ -98,3 +98,46 @@ describe('Dashboard Component', () => {
     });
   });
 
+  test('displays top screens', async () => {
+    render(
+      <BrowserRouter>
+        <Dashboard />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      // В списке есть номера: "1. Home", "2. Listing"
+      expect(screen.getByText(/1\. Home/)).toBeInTheDocument();
+      expect(screen.getByText(/500 просмотров/i)).toBeInTheDocument();
+    });
+  });
+
+  test('handles API error gracefully', async () => {
+    mockApiContext.analytics.getOverview.mockRejectedValue(
+      new Error('API Error')
+    );
+
+    render(
+      <BrowserRouter>
+        <Dashboard />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Ошибка загрузки данных/i)).toBeInTheDocument();
+    });
+  });
+
+  test('shows loading state initially', () => {
+    render(
+      <BrowserRouter>
+        <Dashboard />
+      </BrowserRouter>
+    );
+
+    // Ant Design Spin проверяем по aria-busy
+    const spinner = document.querySelector('.ant-spin-spinning');
+    expect(spinner).toBeInTheDocument();
+  });
+});
+
