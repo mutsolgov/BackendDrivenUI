@@ -198,4 +198,80 @@ const ScreenList = () => {
           onChange: handleTableChange,
           onShowSizeChange: handleTableChange,
         }}
-      
+      />
+
+      <Modal
+        title="Создать новый экран"
+        open={modalVisible}
+        onOk={() => form.submit()}
+        onCancel={() => {
+          setModalVisible(false);
+          form.resetFields();
+        }}
+        okText="Создать"
+        cancelText="Отмена"
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleCreate}
+        >
+          <Form.Item
+            name="name"
+            label="Название"
+            rules={[{ required: true, message: 'Введите название экрана' }]}
+          >
+            <Input placeholder="home, listing, profile" />
+          </Form.Item>
+          
+          <Form.Item
+            name="title"
+            label="Заголовок"
+            rules={[{ required: true, message: 'Введите заголовок экрана' }]}
+          >
+            <Input placeholder="Главная страница" />
+          </Form.Item>
+          
+          <Form.Item
+            name="description"
+            label="Описание"
+          >
+            <Input.TextArea placeholder="Описание экрана" rows={3} />
+          </Form.Item>
+          
+          <Form.Item
+            name="platform"
+            label="Платформа"
+            initialValue="web"
+            rules={[{ required: true, message: 'Выберите платформу' }]}
+          >
+            <Select>
+              <Option value="web">Web</Option>
+              <Option value="android">Android</Option>
+              <Option value="ios">iOS</Option>
+            </Select>
+          </Form.Item>
+          
+          <Form.Item
+            name="locale"
+            label="Локаль"
+            initialValue="ru"
+            rules={[{ required: true, message: 'Выберите локаль' }]}
+          >
+            <Select>
+              <Option value="ru">Русский</Option>
+              <Option value="en">English</Option>
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
+};
+
+export default ScreenList;
+
+
+
+
+
