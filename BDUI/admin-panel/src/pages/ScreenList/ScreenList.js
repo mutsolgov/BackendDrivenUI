@@ -141,4 +141,61 @@ const ScreenList = () => {
             icon={<EditOutlined />}
             onClick={() => navigate(`/screens/builder/${record.id}`)}
             size="small"
-          
+          >
+            Редактировать
+          </Button>
+          <Button
+            icon={<CopyOutlined />}
+            onClick={() => handleDuplicate(record)}
+            size="small"
+          >
+            Копировать
+          </Button>
+          <Popconfirm
+            title="Вы уверены, что хотите удалить этот экран?"
+            onConfirm={() => handleDelete(record.id)}
+            okText="Да"
+            cancelText="Нет"
+          >
+            <Button
+              danger
+              icon={<DeleteOutlined />}
+              size="small"
+            >
+              Удалить
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>Экраны</h2>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => setModalVisible(true)}
+        >
+          Создать экран
+        </Button>
+      </div>
+
+      <Table
+        columns={columns}
+        dataSource={screens}
+        rowKey="id"
+        loading={loading}
+        pagination={{
+          ...pagination,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          showTotal: (total, range) => 
+            `${range[0]}-${range[1]} из ${total} экранов`,
+          pageSizeOptions: ['10', '20', '50', '100'],
+          onChange: handleTableChange,
+          onShowSizeChange: handleTableChange,
+        }}
+      
