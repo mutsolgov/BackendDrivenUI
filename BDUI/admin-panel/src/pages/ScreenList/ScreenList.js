@@ -67,4 +67,78 @@ const ScreenList = () => {
     }
   };
 
+  const handleDuplicate = async (screen) => {
+    try {
+      const newName = `${screen.name}_copy_${Date.now()}`;
+      await api.screens.duplicate(screen.id, newName);
+      message.success('Экран скопирован успешно');
+      fetchScreens();
+    } catch (error) {
+      message.error('Ошибка копирования экрана');
+      console.error('Error duplicating screen:', error);
+    }
+  };
 
+  const handleTableChange = (paginationConfig) => {
+    setPagination(paginationConfig);
+  };
+
+  const columns = [
+    {
+      title: 'Название',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text, record) => (
+        <Button type="link" onClick={() => navigate(`/screens/builder/${record.id}`)}>
+          {text}
+        </Button>
+      ),
+    },
+    {
+      title: 'Заголовок',
+      dataIndex: 'title',
+      key: 'title',
+    },
+    {
+      title: 'Платформа',
+      dataIndex: 'platform',
+      key: 'platform',
+      render: (platform) => (
+        <Tag color={platform === 'web' ? 'blue' : platform === 'android' ? 'green' : 'orange'}>
+          {platform.toUpperCase()}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Локаль',
+      dataIndex: 'locale',
+      key: 'locale',
+      render: (locale) => <Tag>{locale.toUpperCase()}</Tag>,
+    },
+    {
+      title: 'Статус',
+      dataIndex: 'is_active',
+      key: 'is_active',
+      render: (isActive) => (
+        <Tag color={isActive ? 'success' : 'default'}>
+          {isActive ? 'Активен' : 'Неактивен'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Версия',
+      dataIndex: 'version',
+      key: 'version',
+      render: (version) => <Tag color="purple">v{version}</Tag>,
+    },
+    {
+      title: 'Действия',
+      key: 'actions',
+      render: (_, record) => (
+        <Space size="middle">
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={() => navigate(`/screens/builder/${record.id}`)}
+            size="small"
+          
