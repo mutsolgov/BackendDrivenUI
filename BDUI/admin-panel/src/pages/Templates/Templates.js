@@ -338,3 +338,129 @@ const Templates = () => {
             </Col>
           </Row>
 
+          <Form.Item
+            name="description"
+            label="Описание"
+          >
+            <TextArea placeholder="Описание шаблона" rows={3} />
+          </Form.Item>
+
+          <Form.Item
+            name="is_public"
+            label="Публичный шаблон"
+            valuePropName="checked"
+          >
+            <input type="checkbox" />
+          </Form.Item>
+
+          <Form.Item
+            name="config"
+            label="Конфигурация (JSON)"
+            rules={[{ required: true, message: 'Введите конфигурацию шаблона' }]}
+          >
+            <Editor
+              height="400px"
+              language="json"
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+              }}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Модальное окно для создания экрана из шаблона */}
+      <Modal
+        title={`Создать экран на основе шаблона "${selectedTemplate?.name}"`}
+        open={createScreenModalVisible}
+        onOk={() => screenForm.submit()}
+        onCancel={() => {
+          setCreateScreenModalVisible(false);
+          setSelectedTemplate(null);
+          setTemplateVariables({});
+          screenForm.resetFields();
+        }}
+        okText="Создать экран"
+        cancelText="Отмена"
+        width={600}
+      >
+        <Form
+          form={screenForm}
+          layout="vertical"
+          onFinish={handleCreateScreen}
+        >
+          <Form.Item
+            name="screenName"
+            label="Название экрана"
+            rules={[{ required: true, message: 'Введите название экрана' }]}
+          >
+            <Input placeholder="Введите название экрана" />
+          </Form.Item>
+
+          <Form.Item
+            name="screenTitle"
+            label="Заголовок экрана"
+            rules={[{ required: true, message: 'Введите заголовок экрана' }]}
+          >
+            <Input placeholder="Введите заголовок экрана" />
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="platform"
+                label="Платформа"
+                rules={[{ required: true, message: 'Выберите платформу' }]}
+              >
+                <Select>
+                  <Option value="web">Web</Option>
+                  <Option value="mobile">Mobile</Option>
+                  <Option value="tablet">Tablet</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="locale"
+                label="Язык"
+                rules={[{ required: true, message: 'Выберите язык' }]}
+              >
+                <Select>
+                  <Option value="ru">Русский</Option>
+                  <Option value="en">English</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {selectedTemplate && extractTemplateVariables(selectedTemplate.config).length > 0 && (
+            <>
+              <div style={{ marginBottom: 16, fontWeight: 'bold' }}>
+                Переменные шаблона:
+              </div>
+              {extractTemplateVariables(selectedTemplate.config).map(variable => (
+                <Form.Item
+                  key={variable}
+                  name={variable}
+                  label={`${variable}`}
+                  rules={[{ required: true, message: `Введите значение для ${variable}` }]}
+                >
+                  <Input placeholder={`Введите значение для ${variable}`} />
+                </Form.Item>
+              ))}
+            </>
+          )}
+        </Form>
+      </Modal>
+    </div>
+  );
+};
+
+export default Templates;
+
+
+
+
+
