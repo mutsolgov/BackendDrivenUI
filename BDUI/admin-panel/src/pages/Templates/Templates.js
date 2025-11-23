@@ -203,3 +203,138 @@ const Templates = () => {
     other: 'Другие'
   };
 
+  return (
+    <div>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>Шаблоны</h2>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+          Создать шаблон
+        </Button>
+      </div>
+
+      {Object.entries(groupedTemplates).map(([category, categoryTemplates]) => (
+        <div key={category} style={{ marginBottom: 32 }}>
+          <h3 style={{ marginBottom: 16, borderBottom: '1px solid #d9d9d9', paddingBottom: 8 }}>
+            {categoryNames[category] || category}
+          </h3>
+          <Row gutter={[16, 16]}>
+            {categoryTemplates.map(template => (
+              <Col key={template.id} xs={24} sm={12} md={8} lg={6}>
+                <Card
+                  className="template-card"
+                  size="small"
+                  title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <FileTextOutlined />
+                      <span>{template.name}</span>
+                    </div>
+                  }
+                  extra={
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {template.is_public && <Tag color="green">Публичный</Tag>}
+                      {template.parent_id && <Tag color="orange">Унаследован</Tag>}
+                    </div>
+                  }
+                  actions={[
+                    <Button
+                      key="edit"
+                      type="text"
+                      size="small"
+                      icon={<EditOutlined />}
+                      onClick={() => openEditModal(template)}
+                      title="Редактировать"
+                    />,
+                    <Button
+                      key="inherit"
+                      type="text"
+                      size="small"
+                      icon={<CopyOutlined />}
+                      onClick={() => handleInherit(template)}
+                      title="Наследовать"
+                    />,
+                    <Button
+                      key="create-screen"
+                      type="text"
+                      size="small"
+                      icon={<FileAddOutlined />}
+                      onClick={() => openCreateScreenModal(template)}
+                      title="Создать экран на основе шаблона"
+                      style={{ color: '#1890ff' }}
+                    />,
+                    <Popconfirm
+                      key="delete"
+                      title="Удалить шаблон?"
+                      onConfirm={() => handleDelete(template.id)}
+                      okText="Да"
+                      cancelText="Нет"
+                    >
+                      <Button
+                        type="text"
+                        size="small"
+                        danger
+                        icon={<DeleteOutlined />}
+                        title="Удалить"
+                      />
+                    </Popconfirm>
+                  ]}
+                >
+                  <div style={{ marginBottom: 8, fontSize: '12px', color: '#666' }}>
+                    {template.description || 'Без описания'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#999' }}>
+                    Создан: {new Date(template.created_at).toLocaleDateString()}
+                  </div>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </div>
+      ))}
+
+      <Modal
+        title={editingTemplate ? 'Редактировать шаблон' : 'Создать шаблон'}
+        open={modalVisible}
+        onOk={() => form.submit()}
+        onCancel={() => {
+          setModalVisible(false);
+          setEditingTemplate(null);
+          form.resetFields();
+        }}
+        okText={editingTemplate ? 'Обновить' : 'Создать'}
+        cancelText="Отмена"
+        width={800}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={editingTemplate ? handleUpdate : handleCreate}
+        >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="name"
+                label="Название"
+                rules={[{ required: true, message: 'Введите название шаблона' }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="category"
+                label="Категория"
+                rules={[{ required: true, message: 'Выберите категорию' }]}
+              >
+                <Select allowClear showSearch>
+                  {categories.map(cat => (
+                    <Option key={cat} value={cat}>{categoryNames[cat] || cat}</Option>
+                  ))}
+                  <Option value="ecommerce">Электронная коммерция</Option>
+                  <Option value="marketing">Маркетинг</Option>
+                  <Option value="layout">Макеты</Option>
+                  <Option value="forms">Формы</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
