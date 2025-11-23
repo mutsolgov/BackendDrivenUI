@@ -106,3 +106,100 @@ const Templates = () => {
     }
   };
 
+  const openCreateModal = () => {
+    setEditingTemplate(null);
+    form.resetFields();
+    form.setFieldsValue({
+      config: JSON.stringify({
+        type: "Container",
+        props: {},
+        children: []
+      }, null, 2),
+      is_public: true
+    });
+    setModalVisible(true);
+  };
+
+  const openEditModal = (template) => {
+    setEditingTemplate(template);
+    form.setFieldsValue({
+      ...template,
+      config: JSON.stringify(template.config, null, 2)
+    });
+    setModalVisible(true);
+  };
+
+  const extractTemplateVariables = (config) => {
+    const configStr = JSON.stringify(config);
+    const variables = [];
+    const regex = /\{\{(\w+)\}\}/g;
+    let match;
+    while ((match = regex.exec(configStr)) !== null) {
+      if (!variables.includes(match[1])) {
+        variables.push(match[1]);
+      }
+    }
+    return variables;
+  };
+
+  const openCreateScreenModal = (template) => {
+    setSelectedTemplate(template);
+    const variables = extractTemplateVariables(template.config);
+    const initialVariables = {};
+    variables.forEach(variable => {
+      initialVariables[variable] = '';
+    });
+    setTemplateVariables(initialVariables);
+    screenForm.resetFields();
+    screenForm.setFieldsValue({
+      screenName: `${template.name}_screen`,
+      screenTitle: `Экран на основе ${template.name}`,
+      platform: 'web',
+      locale: 'ru',
+      ...initialVariables
+    });
+    setCreateScreenModalVisible(true);
+  };
+
+  const handleCreateScreen = async (values) => {
+    try {
+      const { screenName, screenTitle, platform, locale, ...variables } = values;
+      
+      const response = await api.screens.createFromTemplate(
+        selectedTemplate.id,
+        screenName,
+        {
+          screenTitle,
+          platform,
+          locale,
+          templateVariables: variables
+        }
+      );
+
+      message.success('Экран создан успешно');
+      setCreateScreenModalVisible(false);
+      screenForm.resetFields();
+      
+      navigate(`/screen-builder/${response.data.id}`);
+    } catch (error) {
+      message.error('Ошибка создания экрана: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const groupedTemplates = templates.reduce((groups, template) => {
+    const category = template.category || 'other';
+    if (!groups[category]) {
+      groups[category] = [];
+    }
+    groups[category].push(template);
+    return groups;
+  }, {});
+
+  const categoryNames = {
+    ecommerce: 'Электронная коммерция',
+    marketing: 'Маркетинг',
+    layout: 'Макеты',
+    forms: 'Формы',
+    other: 'Другие'
+  };
+
