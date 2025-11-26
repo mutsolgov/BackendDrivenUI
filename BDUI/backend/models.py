@@ -73,3 +73,48 @@ class ABTest(Base):
     screen = relationship("Screen", back_populates="ab_tests")
 
 
+class Template(Base):
+    __tablename__ = "templates"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    description = Column(Text)
+    config = Column(JSON)
+    category = Column(String)
+    is_public = Column(Boolean, default=True)
+    parent_id = Column(Integer, ForeignKey("templates.id"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    children = relationship("Template", remote_side=[parent_id])
+
+
+class PerformanceMetric(Base):
+    __tablename__ = "performance_metrics"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    screen_id = Column(Integer, ForeignKey("screens.id"))
+    operation_type = Column(String)  
+    total_time = Column(Float)  
+    db_time = Column(Float)  
+    backend_time = Column(Float)  
+    websocket_time = Column(Float)  
+    client_time = Column(Float)  
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    is_active = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+
+
+
