@@ -186,4 +186,54 @@ async def get_screen_variant(
                 ScreenModel.is_active == True
             ).first()
     
+    if not screen:
+        raise HTTPException(status_code=404, detail="Screen not found")
+    
+    cache_key = f"ab_variant:{screen.id}:{user_id}:{session_id}"
+    cached_result = await cache.get(cache_key)
+    if cached_result:
+        return cached_result
+    
+    active_test = db.query(ABTestModel).filter(
+        ABTestModel.screen_id == screen.id,
+        ABTestModel.is_active == True
+    ).first()
+    
+    if not active_test:
+        result = {
+            "variant": "control",
+            "config": screen.config,
+            "test_id": None
+        }
+    else:
+        identifier = user_id or session_id or str(random.random())
+        hash_value = int(hashlib.md5(f"{active_test.id}:{identifier}".encode()).hexdigest(), 16)
+        
+        if (hash_value % 100) / 100 < active_test.traffic_allocation:
+            variant_keys = list(active_test.variants.keys())
+            variant_index = hash_value % len(variant_keys)
+            variant_key = variant_keys[variant_index]
+            
+            result = {
+                "variant": variant_key,
+                "config": active_test.variants[variant_key],
+                "test_id": active_test.id
+            }
+        else:
+            result = {
+                "variant": "control",
+                "config": screen.config,
+                "test_id": active_test.id
+            }
+    
+    await cache.set(cache_key, result, ttl=3600)
+    return result
+
+
+async def invalidate_ab_test_cache():
+    await cache.invalidate_pattern("ab_variant:*")
+
+
+
+
 
