@@ -90,4 +90,108 @@ async def get_analytics_events_count(
     return {"total": total_count}
 
 
+@router.get("/stats/{screen_id}", response_model=AnalyticsStats)
+async def get_screen_stats(
+    screen_id: int,
+    days: int = 7,
+    db: Session = Depends(get_db)
+):
+    cache_key = f"stats:{screen_id}:{days}"
+    cached_result = await cache.get(cache_key)
+    if cached_result:
+        # Добавляем active_components_count для старых кэшированных данных
+        if 'active_components_count' not in cached_result:
+            # Получаем общее количество компонентов в экране (включая вложенные)
+            screen = db.query(ScreenModel).filter(ScreenModel.id == screen_id).first()
+            total_components_count = 0
+            if screen and screen.config:
+                try:
+                    config_data = screen.config if isinstance(screen.config, dict) else json.loads(screen.config)
+                    components = config_data.get('components', [])
+                    total_components_count = count_all_components(components)
+                except:
+                    total_components_count = 0
+            cached_result['active_components_count'] = total_components_count
+        return AnalyticsStats(**cached_result)
+    
+    start_date = datetime.utcnow() - timedelta(days=days)
+    
+    query = db.query(AnalyticsModel).filter(
+        AnalyticsModel.screen_id == screen_id,
+        AnalyticsModel.timestamp >= start_date
+    )
+    
+    total_views = query.filter(AnalyticsModel.event_type == "view").count()
+    
+    unique_users = query.filter(AnalyticsModel.user_id.isnot(None)).with_entities(AnalyticsModel.user_id).distinct().count()
+    
+    session_durations = db.query(
+        AnalyticsModel.session_id,
+        func.max(AnalyticsModel.timestamp) - func.min(AnalyticsModel.timestamp)
+    ).filter(
+        AnalyticsModel.screen_id == screen_id,
+        AnalyticsModel.timestamp >= start_date
+    ).group_by(AnalyticsModel.session_id).all()
+    
+    avg_session_duration = 0
+    if session_durations:
+        total_duration = sum([duration[1].total_seconds() for duration in session_durations if duration[1]])
+        avg_session_duration = total_duration / len(session_durations)
+    
+    # Получаем все активные компоненты (без ограничения)
+    active_components = db.query(
+        AnalyticsModel.component_id,
+        func.count(AnalyticsModel.id).label('count')
+    ).filter(
+        AnalyticsModel.screen_id == screen_id,
+        AnalyticsModel.timestamp >= start_date,
+        AnalyticsModel.component_id.isnot(None)
+    ).group_by(AnalyticsModel.component_id).order_by(desc('count')).all()
+    
+    # Ограничиваем до 10 только для отображения в деталях
+    most_used_components = active_components[:10]
+    
+    platform_breakdown = dict(db.query(
+        AnalyticsModel.platform,
+        func.count(AnalyticsModel.id)
+    ).filter(
+        AnalyticsModel.screen_id == screen_id,
+        AnalyticsModel.timestamp >= start_date
+    ).group_by(AnalyticsModel.platform).all())
+    
+    locale_breakdown = dict(db.query(
+        AnalyticsModel.locale,
+        func.count(AnalyticsModel.id)
+    ).filter(
+        AnalyticsModel.screen_id == screen_id,
+        AnalyticsModel.timestamp >= start_date
+    ).group_by(AnalyticsModel.locale).all())
+    
+    # Получаем общее количество компонентов в экране (включая вложенные)
+    screen = db.query(ScreenModel).filter(ScreenModel.id == screen_id).first()
+    total_components_count = 0
+    if screen and screen.config:
+        try:
+            config_data = screen.config if isinstance(screen.config, dict) else json.loads(screen.config)
+            components = config_data.get('components', [])
+            total_components_count = count_all_components(components)
+        except:
+            total_components_count = 0
+    
+    stats = AnalyticsStats(
+        total_views=total_views,
+        unique_users=unique_users,
+        avg_session_duration=avg_session_duration,
+        most_used_components=[
+            {"component_id": comp[0], "count": comp[1]} 
+            for comp in most_used_components
+        ],
+        active_components_count=total_components_count,  # Общее количество компонентов в экране (включая вложенные)
+        platform_breakdown=platform_breakdown,
+        locale_breakdown=locale_breakdown
+    )
+    
+    await cache.set(cache_key, stats.dict(), ttl=300)
+    return stats
+
 
