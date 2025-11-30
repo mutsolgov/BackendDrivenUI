@@ -195,3 +195,49 @@ async def get_screen_stats(
     return stats
 
 
+@router.get("/overview")
+async def get_analytics_overview(days: int = 7, db: Session = Depends(get_db)):
+    cache_key = f"analytics_overview:{days}"
+    cached_result = await cache.get(cache_key)
+    if cached_result:
+        return cached_result
+    
+    start_date = datetime.utcnow() - timedelta(days=days)
+    
+    total_events = db.query(AnalyticsModel).filter(
+        AnalyticsModel.timestamp >= start_date
+    ).count()
+    
+    # Считаем активные экраны из таблицы screens, а не из аналитики
+    unique_screens = db.query(ScreenModel).filter(
+        ScreenModel.is_active == True
+    ).count()
+    
+    unique_users = db.query(AnalyticsModel.user_id).filter(
+        AnalyticsModel.timestamp >= start_date,
+        AnalyticsModel.user_id.isnot(None)
+    ).distinct().count()
+    
+    top_screens = db.query(
+        ScreenModel.name,
+        ScreenModel.title,
+        func.count(AnalyticsModel.id).label('views')
+    ).join(
+        AnalyticsModel, ScreenModel.id == AnalyticsModel.screen_id
+    ).filter(
+        AnalyticsModel.timestamp >= start_date,
+        AnalyticsModel.event_type == "view"
+    ).group_by(
+        ScreenModel.id, ScreenModel.name, ScreenModel.title
+    ).order_by(desc('views')).limit(10).all()
+    
+    daily_stats = db.query(
+        func.date(AnalyticsModel.timestamp).label('date'),
+        func.count(AnalyticsModel.id).label('events'),
+        func.count(func.distinct(AnalyticsModel.user_id)).label('unique_users')
+    ).filter(
+        AnalyticsModel.timestamp >= start_date
+    ).group_by(func.date(AnalyticsModel.timestamp)).order_by('date').all()
+    
+  
+
