@@ -239,5 +239,33 @@ async def get_analytics_overview(days: int = 7, db: Session = Depends(get_db)):
         AnalyticsModel.timestamp >= start_date
     ).group_by(func.date(AnalyticsModel.timestamp)).order_by('date').all()
     
-  
+    result = {
+        "total_events": total_events,
+        "unique_screens": unique_screens,  # Количество активных экранов в системе
+        "unique_users": unique_users,
+        "top_screens": [
+            {"name": screen[0], "title": screen[1], "views": screen[2]}
+            for screen in top_screens
+        ],
+        "daily_stats": [
+            {
+                "date": stat[0].isoformat(),
+                "events": stat[1],
+                "unique_users": stat[2]
+            }
+            for stat in daily_stats
+        ]
+    }
+    
+    await cache.set(cache_key, result, ttl=300)
+    return result
+
+
+async def invalidate_analytics_cache():
+    await cache.invalidate_pattern("stats:*")
+    await cache.invalidate_pattern("analytics_overview:*")
+
+
+
+
 
