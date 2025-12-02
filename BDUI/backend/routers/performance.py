@@ -1,0 +1,59 @@
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import func, desc
+from typing import List, Optional
+from database import get_db
+from models import PerformanceMetric
+from datetime import datetime, timedelta
+
+router = APIRouter()
+
+
+@router.get("/metrics")
+async def get_performance_metrics(
+    screen_id: Optional[int] = Query(None),
+    operation_type: Optional[str] = Query(None),
+    limit: int = Query(100, le=1000),
+    days: int = Query(7, le=30),
+    db: Session = Depends(get_db)
+):
+    """
+    Получить метрики производительности
+    """
+    query = db.query(PerformanceMetric)
+    
+    # Фильтр по экрану
+    if screen_id:
+        query = query.filter(PerformanceMetric.screen_id == screen_id)
+    
+    # Фильтр по типу операции
+    if operation_type:
+        query = query.filter(PerformanceMetric.operation_type == operation_type)
+    
+    # Фильтр по дате
+    start_date = datetime.now() - timedelta(days=days)
+    query = query.filter(PerformanceMetric.timestamp >= start_date)
+    
+    # Сортировка и лимит
+    metrics = query.order_by(desc(PerformanceMetric.timestamp)).limit(limit).all()
+    
+    return {
+        "metrics": [
+            {
+                "id": m.id,
+                "screen_id": m.screen_id,
+                "operation_type": m.operation_type,
+                "total_time": m.total_time,
+                "db_time": m.db_time,
+                "backend_time": m.backend_time,
+                "websocket_time": m.websocket_time,
+                "client_time": m.client_time,
+                "timestamp": m.timestamp.isoformat()
+            }
+            for m in metrics
+        ],
+        "count": len(metrics)
+    }
+
+
+
