@@ -70,4 +70,71 @@ async def create_component(
     return Component.from_orm(db_component)
 
 
+@router.put("/{component_id}", response_model=Component)
+async def update_component(
+    component_id: int,
+    component_update: ComponentUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    db_component = db.query(ComponentModel).filter(ComponentModel.id == component_id).first()
+    if not db_component:
+        raise HTTPException(status_code=404, detail="Component not found")
+    
+    update_data = component_update.dict(exclude_unset=True)
+    
+    for field, value in update_data.items():
+        setattr(db_component, field, value)
+    
+    db.commit()
+    db.refresh(db_component)
+    
+    background_tasks.add_task(invalidate_component_cache)
+    
+    return Component.from_orm(db_component)
+
+
+@router.delete("/{component_id}")
+async def delete_component(
+    component_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    db_component = db.query(ComponentModel).filter(ComponentModel.id == component_id).first()
+    if not db_component:
+        raise HTTPException(status_code=404, detail="Component not found")
+    
+    if db_component.is_system:
+        raise HTTPException(status_code=400, detail="Cannot delete system component")
+    
+    db.delete(db_component)
+    db.commit()
+    
+    background_tasks.add_task(invalidate_component_cache)
+    
+    return {"message": "Component deleted successfully"}
+
+
+@router.get("/categories/list")
+async def get_component_categories(db: Session = Depends(get_db)):
+    cache_key = "component_categories"
+    cached_result = await cache.get(cache_key)
+    if cached_result:
+        return cached_result
+    
+    categories = db.query(ComponentModel.category).distinct().all()
+    result = [cat[0] for cat in categories if cat[0]]
+    
+    await cache.set(cache_key, result)
+    return result
+
+
+async def invalidate_component_cache():
+    await cache.invalidate_pattern("component:*")
+    await cache.invalidate_pattern("components:*")
+    await cache.delete("component_categories")
+
+
+
+
 
