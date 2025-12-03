@@ -177,3 +177,118 @@ async def update_screen(
     
     return Screen.from_orm(db_screen)
 
+
+@router.delete("/{screen_id}")
+async def delete_screen(
+    screen_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    db_screen = db.query(ScreenModel).filter(ScreenModel.id == screen_id).first()
+    if not db_screen:
+        raise HTTPException(status_code=404, detail="Screen not found")
+    
+    db.delete(db_screen)
+    db.commit()
+    
+    background_tasks.add_task(invalidate_screen_cache, screen_id)
+    
+    return {"message": "Screen deleted successfully"}
+
+
+@router.post("/{screen_id}/duplicate", response_model=Screen)
+async def duplicate_screen(
+    screen_id: int,
+    new_name: str,
+    db: Session = Depends(get_db)
+):
+    original_screen = db.query(ScreenModel).filter(ScreenModel.id == screen_id).first()
+    if not original_screen:
+        raise HTTPException(status_code=404, detail="Screen not found")
+    
+    existing_screen = db.query(ScreenModel).filter(
+        ScreenModel.name == new_name,
+        ScreenModel.platform == original_screen.platform,
+        ScreenModel.locale == original_screen.locale
+    ).first()
+    
+    if existing_screen:
+        raise HTTPException(status_code=400, detail="Screen with this name already exists")
+    
+    new_screen = ScreenModel(
+        name=new_name,
+        title=f"{original_screen.title} (Copy)",
+        description=original_screen.description,
+        config=original_screen.config,
+        platform=original_screen.platform,
+        locale=original_screen.locale,
+        is_active=False
+    )
+    
+    db.add(new_screen)
+    db.commit()
+    db.refresh(new_screen)
+    
+    return Screen.from_orm(new_screen)
+
+
+@router.post("/create-from-template", response_model=Screen)
+async def create_screen_from_template(
+    request_data: dict,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """
+    Создает экран на основе шаблона с подстановкой переменных
+    """
+    # Извлекаем параметры из запроса
+    template_id = request_data.get('template_id')
+    screen_name = request_data.get('screen_name')
+    screen_title = request_data.get('screen_title')
+    template_variables = request_data.get('template_variables', {})
+    platform = request_data.get('platform', 'web')
+    locale = request_data.get('locale', 'ru')
+    
+    if not template_id or not screen_name:
+        raise HTTPException(status_code=400, detail="template_id and screen_name are required")
+    
+    # Получаем шаблон
+    template = db.query(TemplateModel).filter(TemplateModel.id == template_id).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    # Проверяем, не существует ли уже экран с таким именем
+    existing_screen = db.query(ScreenModel).filter(
+        ScreenModel.name == screen_name,
+        ScreenModel.platform == platform,
+        ScreenModel.locale == locale
+    ).first()
+    
+    if existing_screen:
+        raise HTTPException(status_code=400, detail="Screen with this name already exists")
+    
+    # Подставляем переменные в конфигурацию шаблона
+    processed_config = substitute_template_variables(template.config, template_variables)
+    
+    # Создаем экран
+    screen_title = screen_title or screen_name
+    new_screen = ScreenModel(
+        name=screen_name,
+        title=screen_title,
+        description=f"Created from template: {template.name}",
+        config=processed_config,
+        platform=platform,
+        locale=locale,
+        is_active=False  # По умолчанию неактивный, пользователь активирует вручную
+    )
+    
+    db.add(new_screen)
+    db.commit()
+    db.refresh(new_screen)
+    
+    if background_tasks:
+        background_tasks.add_task(invalidate_screen_cache, new_screen.id)
+        background_tasks.add_task(notify_screen_update, new_screen.id, Screen.from_orm(new_screen).dict())
+    
+    return Screen.from_orm(new_screen)
+
