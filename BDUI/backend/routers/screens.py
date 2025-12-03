@@ -292,3 +292,61 @@ async def create_screen_from_template(
     
     return Screen.from_orm(new_screen)
 
+
+def substitute_template_variables(config: Dict[str, Any], variables: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Рекурсивно подставляет переменные шаблона в конфигурацию
+    """
+    if isinstance(config, dict):
+        result = {}
+        for key, value in config.items():
+            result[key] = substitute_template_variables(value, variables)
+        return result
+    elif isinstance(config, list):
+        return [substitute_template_variables(item, variables) for item in config]
+    elif isinstance(config, str):
+        # Заменяем переменные в строке
+        def replace_variable(match):
+            var_name = match.group(1)
+            return str(variables.get(var_name, match.group(0)))
+        
+        return re.sub(r'\{\{(\w+)\}\}', replace_variable, config)
+    else:
+        return config
+
+
+async def invalidate_screen_cache(screen_id: int):
+    await cache.delete(f"screen:{screen_id}")
+    await cache.invalidate_pattern("screens:*")
+    await cache.invalidate_pattern("screen_name:*")
+    # Также инвалидируем кэш аналитики, так как количество активных экранов может измениться
+    await cache.invalidate_pattern("analytics_overview:*")
+
+async def notify_screen_update(screen_id: int, screen_data: dict, performance_data: dict = None):
+    """Уведомить всех клиентов об обновлении экрана с метриками производительности"""
+    print(f"🚀 notify_screen_update called for screen {screen_id}")
+    await manager.broadcast_screen_update(str(screen_id), screen_data, performance_data)
+
+def save_performance_metric(db: Session, screen_id: int, operation_type: str, db_time: float, backend_time: float):
+    """Сохранить метрику производительности в БД"""
+    try:
+        metric = PerformanceMetric(
+            screen_id=screen_id,
+            operation_type=operation_type,
+            total_time=backend_time,
+            db_time=db_time,
+            backend_time=backend_time,
+            websocket_time=0.0,  # Будет обновлено позже
+            client_time=0.0  # Будет обновлено позже
+        )
+        db.add(metric)
+        db.commit()
+        print(f"✅ Performance metric saved: {operation_type} on screen {screen_id} - {backend_time:.2f}ms")
+    except Exception as e:
+        print(f"❌ Error saving performance metric: {e}")
+        db.rollback()
+
+
+
+
+
