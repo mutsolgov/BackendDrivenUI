@@ -103,3 +103,77 @@ async def get_screen_by_name(
     await cache.set(cache_key, result)
     return result
 
+
+@router.post("/", response_model=Screen)
+async def create_screen(
+    screen: ScreenCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    existing_screen = db.query(ScreenModel).filter(
+        ScreenModel.name == screen.name,
+        ScreenModel.platform == screen.platform,
+        ScreenModel.locale == screen.locale
+    ).first()
+    
+    if existing_screen:
+        raise HTTPException(status_code=400, detail="Screen already exists")
+    
+    db_screen = ScreenModel(**screen.dict())
+    db.add(db_screen)
+    db.commit()
+    db.refresh(db_screen)
+    
+    background_tasks.add_task(invalidate_screen_cache, db_screen.id)
+    background_tasks.add_task(notify_screen_update, db_screen.id, Screen.from_orm(db_screen).dict())
+    
+    return Screen.from_orm(db_screen)
+
+
+@router.put("/{screen_id}", response_model=Screen)
+async def update_screen(
+    screen_id: int,
+    screen_update: ScreenUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    # Начинаем отсчет времени
+    start_time = time.time() * 1000  # миллисекунды
+    save_timestamp = screen_update.dict().get('metadata', {}).get('saveTimestamp', start_time)
+    
+    db_screen = db.query(ScreenModel).filter(ScreenModel.id == screen_id).first()
+    if not db_screen:
+        raise HTTPException(status_code=404, detail="Screen not found")
+    
+    update_data = screen_update.dict(exclude_unset=True)
+    
+    if update_data.get('config') and update_data['config'] != db_screen.config:
+        db_screen.version += 1
+    
+    for field, value in update_data.items():
+        setattr(db_screen, field, value)
+    
+    # Замеряем время сохранения в БД
+    db_start = time.time() * 1000
+    db.commit()
+    db.refresh(db_screen)
+    db_time = time.time() * 1000 - db_start
+    
+    backend_time = time.time() * 1000 - start_time
+    
+    # Создаем метрики
+    performance_data = {
+        "save_timestamp": save_timestamp,
+        "backend_processed_at": time.time() * 1000,
+        "db_time": db_time,
+        "backend_time": backend_time,
+        "screen_id": screen_id
+    }
+    
+    # Сохраняем метрики в БД (асинхронно)
+    background_tasks.add_task(save_performance_metric, db, screen_id, "update", db_time, backend_time)
+    background_tasks.add_task(invalidate_screen_cache, screen_id)
+    background_tasks.add_task(notify_screen_update, screen_id, Screen.from_orm(db_screen).dict(), performance_data)
+    
+    return Screen.from_orm(db_screen)
+
