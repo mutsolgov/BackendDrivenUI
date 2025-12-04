@@ -98,3 +98,25 @@ async def update_template(
     
     return Template.from_orm(db_template)
 
+
+@router.delete("/{template_id}")
+async def delete_template(
+    template_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    db_template = db.query(TemplateModel).filter(TemplateModel.id == template_id).first()
+    if not db_template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    children = db.query(TemplateModel).filter(TemplateModel.parent_id == template_id).all()
+    if children:
+        raise HTTPException(status_code=400, detail="Cannot delete template with children")
+    
+    db.delete(db_template)
+    db.commit()
+    
+    background_tasks.add_task(invalidate_template_cache)
+    
+    return {"message": "Template deleted successfully"}
+
