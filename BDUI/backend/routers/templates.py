@@ -74,3 +74,27 @@ async def create_template(
     
     return Template.from_orm(db_template)
 
+
+@router.put("/{template_id}", response_model=Template)
+async def update_template(
+    template_id: int,
+    template_update: TemplateUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    db_template = db.query(TemplateModel).filter(TemplateModel.id == template_id).first()
+    if not db_template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    update_data = template_update.dict(exclude_unset=True)
+    
+    for field, value in update_data.items():
+        setattr(db_template, field, value)
+    
+    db.commit()
+    db.refresh(db_template)
+    
+    background_tasks.add_task(invalidate_template_cache)
+    
+    return Template.from_orm(db_template)
+
