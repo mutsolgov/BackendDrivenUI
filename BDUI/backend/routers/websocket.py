@@ -47,3 +47,27 @@ class ConnectionManager:
             for conn in disconnected:
                 self.active_connections[screen_id].remove(conn)
 
+    async def send_to_admin(self, message: dict):
+        """Отправить сообщение всем подключенным админ-панелям"""
+        disconnected = []
+        for connection in self.admin_connections:
+            try:
+                await connection.send_text(json.dumps(message))
+            except:
+                disconnected.append(connection)
+        
+        # Удаляем отключенные соединения
+        for conn in disconnected:
+            if conn in self.admin_connections:
+                self.admin_connections.remove(conn)
+
+    async def broadcast_screen_update(self, screen_id: str, screen_data: dict):
+        """Уведомить всех клиентов об обновлении экрана"""
+        message = {
+            "type": "screen_update",
+            "screen_id": screen_id,
+            "data": screen_data,
+            "timestamp": datetime.now().isoformat()
+        }
+        await self.send_to_screen(screen_id, message)
+
