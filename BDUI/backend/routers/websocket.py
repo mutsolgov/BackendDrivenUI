@@ -71,3 +71,44 @@ class ConnectionManager:
         }
         await self.send_to_screen(screen_id, message)
 
+    async def broadcast_component_update(self, screen_id: str, component_data: dict):
+        """Уведомить всех клиентов об обновлении компонента"""
+        message = {
+            "type": "component_update",
+            "screen_id": screen_id,
+            "component": component_data,
+            "timestamp": datetime.now().isoformat()
+        }
+        await self.send_to_screen(screen_id, message)
+
+    async def broadcast_analytics_event(self, event_data: dict):
+        """Отправить событие аналитики в админ-панель"""
+        message = {
+            "type": "analytics_event",
+            "data": event_data,
+            "timestamp": datetime.now().isoformat()
+        }
+        await self.send_to_admin(message)
+
+# Глобальный менеджер соединений
+manager = ConnectionManager()
+
+async def websocket_endpoint(websocket: WebSocket, screen_id: str = None, is_admin: bool = False):
+    await manager.connect(websocket, screen_id, is_admin)
+    try:
+        while True:
+            # Ожидаем сообщения от клиента
+            data = await websocket.receive_text()
+            message = json.loads(data)
+            
+            if message.get("type") == "ping":
+                await websocket.send_text(json.dumps({"type": "pong"}))
+            elif message.get("type") == "analytics_event":
+                # Пересылаем событие аналитики в админ-панель
+                await manager.broadcast_analytics_event(message.get("data", {}))
+            
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, screen_id, is_admin)
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+        manager.disconnect(websocket, screen_id, is_admin)
