@@ -120,3 +120,60 @@ async def delete_template(
     
     return {"message": "Template deleted successfully"}
 
+
+@router.post("/{template_id}/inherit", response_model=Template)
+async def inherit_template(
+    template_id: int,
+    new_name: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    parent_template = db.query(TemplateModel).filter(TemplateModel.id == template_id).first()
+    if not parent_template:
+        raise HTTPException(status_code=404, detail="Parent template not found")
+    
+    existing_template = db.query(TemplateModel).filter(TemplateModel.name == new_name).first()
+    if existing_template:
+        raise HTTPException(status_code=400, detail="Template with this name already exists")
+    
+    new_template = TemplateModel(
+        name=new_name,
+        description=f"Inherited from {parent_template.name}",
+        config=parent_template.config.copy(),
+        category=parent_template.category,
+        is_public=False,
+        parent_id=template_id
+    )
+    
+    db.add(new_template)
+    db.commit()
+    db.refresh(new_template)
+    
+    background_tasks.add_task(invalidate_template_cache)
+    
+    return Template.from_orm(new_template)
+
+
+@router.get("/categories/list")
+async def get_template_categories(db: Session = Depends(get_db)):
+    cache_key = "template_categories"
+    cached_result = await cache.get(cache_key)
+    if cached_result:
+        return cached_result
+    
+    categories = db.query(TemplateModel.category).distinct().all()
+    result = [cat[0] for cat in categories if cat[0]]
+    
+    await cache.set(cache_key, result)
+    return result
+
+
+async def invalidate_template_cache():
+    await cache.invalidate_pattern("template:*")
+    await cache.invalidate_pattern("templates:*")
+    await cache.delete("template_categories")
+
+
+
+
+
