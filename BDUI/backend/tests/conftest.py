@@ -302,3 +302,98 @@ def update_component(component_id: int, component: ComponentUpdate, db: Session 
     db.refresh(db_component)
     return db_component
 
+@components_router.delete("/{component_id}")
+def delete_component(component_id: int, db: Session = Depends(get_db)):
+    db_component = db.query(Component).filter(Component.id == component_id).first()
+    if not db_component:
+        raise HTTPException(status_code=404, detail="Component not found")
+    
+    if db_component.is_system:
+        raise HTTPException(status_code=400, detail="Cannot delete system component")
+    
+    db.delete(db_component)
+    db.commit()
+    return {"message": "Component deleted successfully"}
+
+@components_router.get("/categories/list")
+def get_component_categories(db: Session = Depends(get_db)):
+    components = db.query(Component).all()
+    categories = list(set([c.category for c in components]))
+    return categories
+
+app.include_router(components_router, prefix="/api/components", tags=["components"])
+
+
+analytics_router = APIRouter()
+
+class AnalyticsEventCreate(BaseModel):
+    screen_id: int
+    component_id: Optional[str] = None
+    event_type: str
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
+    platform: str = "web"
+    locale: str = "ru"
+    data: Optional[dict] = None
+
+@analytics_router.post("/track")
+def track_event(event: AnalyticsEventCreate, db: Session = Depends(get_db)):
+    db_event = Analytics(**event.model_dump())
+    db.add(db_event)
+    db.commit()
+    return {"message": "Event tracked successfully"}
+
+@analytics_router.get("/events")
+def get_events(
+    screen_id: Optional[int] = None,
+    event_type: Optional[str] = None,
+    platform: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Analytics)
+    if screen_id:
+        query = query.filter(Analytics.screen_id == screen_id)
+    if event_type:
+        query = query.filter(Analytics.event_type == event_type)
+    if platform:
+        query = query.filter(Analytics.platform == platform)
+    return query.all()
+
+@analytics_router.get("/events/count")
+def get_events_count(screen_id: Optional[int] = None, db: Session = Depends(get_db)):
+    query = db.query(Analytics)
+    if screen_id:
+        query = query.filter(Analytics.screen_id == screen_id)
+    return {"total": query.count()}
+
+@analytics_router.get("/stats/{screen_id}")
+def get_screen_stats(screen_id: int, db: Session = Depends(get_db)):
+    events = db.query(Analytics).filter(Analytics.screen_id == screen_id).all()
+    
+    views = [e for e in events if e.event_type == "view"]
+    unique_users = len(set([e.user_id for e in events if e.user_id]))
+    
+    component_clicks = {}
+    for e in events:
+        if e.component_id and e.event_type == "click":
+            component_clicks[e.component_id] = component_clicks.get(e.component_id, 0) + 1
+    
+    most_used = [{"component_id": k, "clicks": v} for k, v in component_clicks.items()]
+    
+    platform_breakdown = {}
+    for e in events:
+        platform_breakdown[e.platform] = platform_breakdown.get(e.platform, 0) + 1
+    
+    locale_breakdown = {}
+    for e in events:
+        locale_breakdown[e.locale] = locale_breakdown.get(e.locale, 0) + 1
+    
+    return {
+        "total_views": len(views),
+        "unique_users": unique_users,
+        "avg_session_duration": 0,
+        "most_used_components": most_used,
+        "platform_breakdown": platform_breakdown,
+        "locale_breakdown": locale_breakdown
+    }
+
