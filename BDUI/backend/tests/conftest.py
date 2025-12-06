@@ -100,3 +100,118 @@ def get_db():
         db.close()
 
 
+app = FastAPI()
+
+import time
+
+class MockCache:
+    def __init__(self):
+        self.storage = {}
+        self.ttls = {}
+        self.set_times = {}
+    
+    async def get(self, key):
+        if key in self.storage:
+            if key in self.ttls:
+                elapsed = time.time() - self.set_times[key]
+                if elapsed > self.ttls[key]:
+                    await self.delete(key)
+                    return None
+            return self.storage[key]
+        return None
+    
+    async def set(self, key, value, ttl=3600):
+        self.storage[key] = value
+        self.ttls[key] = ttl
+        self.set_times[key] = time.time()
+    
+    async def delete(self, key):
+        if key in self.storage:
+            del self.storage[key]
+        if key in self.ttls:
+            del self.ttls[key]
+        if key in self.set_times:
+            del self.set_times[key]
+    
+    async def invalidate_pattern(self, pattern):
+        keys_to_delete = [k for k in self.storage.keys() if pattern in k]
+        for key in keys_to_delete:
+            await self.delete(key)
+
+mock_cache = MockCache()
+sys.modules['cache'] = type(sys)('cache')
+sys.modules['cache'].cache = mock_cache
+
+from fastapi import APIRouter, HTTPException
+from typing import Optional, List
+from pydantic import BaseModel
+
+class ScreenCreate(BaseModel):
+    name: str
+    title: str
+    description: Optional[str] = None
+    config: dict
+    platform: str = "web"
+    locale: str = "ru"
+
+class ScreenUpdate(BaseModel):
+    name: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    config: Optional[dict] = None
+    platform: Optional[str] = None
+    locale: Optional[str] = None
+    is_active: Optional[bool] = None
+
+screens_router = APIRouter()
+
+@screens_router.post("/")
+def create_screen(screen: ScreenCreate, db: Session = Depends(get_db)):
+    existing = db.query(Screen).filter(Screen.name == screen.name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Screen with this name already exists")
+    
+    db_screen = Screen(**screen.model_dump())
+    db.add(db_screen)
+    db.commit()
+    db.refresh(db_screen)
+    return db_screen
+
+@screens_router.get("/{screen_id}")
+def get_screen(screen_id: int, db: Session = Depends(get_db)):
+    screen = db.query(Screen).filter(Screen.id == screen_id).first()
+    if not screen:
+        raise HTTPException(status_code=404, detail="Screen not found")
+    return screen
+
+@screens_router.get("/")
+def get_screens(platform: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(Screen)
+    if platform:
+        query = query.filter(Screen.platform == platform)
+    return query.all()
+
+@screens_router.get("/by-name/{name}")
+def get_screen_by_name(name: str, db: Session = Depends(get_db)):
+    screen = db.query(Screen).filter(Screen.name == name).first()
+    if not screen:
+        raise HTTPException(status_code=404, detail="Screen not found")
+    return screen
+
+@screens_router.put("/{screen_id}")
+def update_screen(screen_id: int, screen: ScreenUpdate, db: Session = Depends(get_db)):
+    db_screen = db.query(Screen).filter(Screen.id == screen_id).first()
+    if not db_screen:
+        raise HTTPException(status_code=404, detail="Screen not found")
+    
+    update_data = screen.model_dump(exclude_unset=True)
+    if 'config' in update_data and update_data['config'] != db_screen.config:
+        db_screen.version += 1
+    
+    for key, value in update_data.items():
+        setattr(db_screen, key, value)
+    
+    db.commit()
+    db.refresh(db_screen)
+    return db_screen
+
