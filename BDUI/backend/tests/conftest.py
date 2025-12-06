@@ -215,3 +215,90 @@ def update_screen(screen_id: int, screen: ScreenUpdate, db: Session = Depends(ge
     db.refresh(db_screen)
     return db_screen
 
+@screens_router.delete("/{screen_id}")
+def delete_screen(screen_id: int, db: Session = Depends(get_db)):
+    db_screen = db.query(Screen).filter(Screen.id == screen_id).first()
+    if not db_screen:
+        raise HTTPException(status_code=404, detail="Screen not found")
+    
+    db.delete(db_screen)
+    db.commit()
+    return {"message": "Screen deleted successfully"}
+
+@screens_router.post("/{screen_id}/duplicate")
+def duplicate_screen(screen_id: int, new_name: str, db: Session = Depends(get_db)):
+    original = db.query(Screen).filter(Screen.id == screen_id).first()
+    if not original:
+        raise HTTPException(status_code=404, detail="Screen not found")
+    
+    new_screen = Screen(
+        name=new_name,
+        title=f"{original.title} (Copy)",
+        description=original.description,
+        config=original.config,
+        platform=original.platform,
+        locale=original.locale,
+        is_active=False
+    )
+    db.add(new_screen)
+    db.commit()
+    db.refresh(new_screen)
+    return new_screen
+
+app.include_router(screens_router, prefix="/api/screens", tags=["screens"])
+
+
+components_router = APIRouter()
+
+class ComponentCreate(BaseModel):
+    name: str
+    type: str
+    category: str = "basic"
+    config: dict
+    props_schema: dict = {}
+
+class ComponentUpdate(BaseModel):
+    config: Optional[dict] = None
+    props_schema: Optional[dict] = None
+    category: Optional[str] = None
+
+@components_router.post("/")
+def create_component(component: ComponentCreate, db: Session = Depends(get_db)):
+    existing = db.query(Component).filter(Component.name == component.name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Component with this name already exists")
+    
+    db_component = Component(**component.model_dump())
+    db.add(db_component)
+    db.commit()
+    db.refresh(db_component)
+    return db_component
+
+@components_router.get("/{component_id}")
+def get_component(component_id: int, db: Session = Depends(get_db)):
+    component = db.query(Component).filter(Component.id == component_id).first()
+    if not component:
+        raise HTTPException(status_code=404, detail="Component not found")
+    return component
+
+@components_router.get("/")
+def get_components(category: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(Component)
+    if category:
+        query = query.filter(Component.category == category)
+    return query.all()
+
+@components_router.put("/{component_id}")
+def update_component(component_id: int, component: ComponentUpdate, db: Session = Depends(get_db)):
+    db_component = db.query(Component).filter(Component.id == component_id).first()
+    if not db_component:
+        raise HTTPException(status_code=404, detail="Component not found")
+    
+    update_data = component.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_component, key, value)
+    
+    db.commit()
+    db.refresh(db_component)
+    return db_component
+
