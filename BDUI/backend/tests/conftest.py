@@ -504,3 +504,55 @@ def deactivate_ab_test(test_id: int, db: Session = Depends(get_db)):
     db.refresh(db_test)
     return db_test
 
+@ab_testing_router.delete("/{test_id}")
+def delete_ab_test(test_id: int, db: Session = Depends(get_db)):
+    db_test = db.query(ABTest).filter(ABTest.id == test_id).first()
+    if not db_test:
+        raise HTTPException(status_code=404, detail="A/B test not found")
+    
+    db.delete(db_test)
+    db.commit()
+    return {"message": "A/B test deleted successfully"}
+
+@ab_testing_router.get("/screen/{screen_identifier}/variant")
+def get_screen_variant(screen_identifier: int, user_id: Optional[str] = None, session_id: Optional[str] = None, db: Session = Depends(get_db)):
+    screen = db.query(Screen).filter(Screen.id == screen_identifier).first()
+    if not screen:
+        raise HTTPException(status_code=404, detail="Screen not found")
+    
+    active_test = db.query(ABTest).filter(
+        ABTest.screen_id == screen_identifier,
+        ABTest.is_active == True
+    ).first()
+    
+    if not active_test:
+        return {
+            "variant": "control",
+            "config": screen.config,
+            "test_id": None
+        }
+    
+    seed = f"{user_id or session_id or ''}{active_test.id}"
+    variant_hash = hash(seed) % 100
+    
+    if variant_hash < active_test.traffic_allocation * 100:
+        variant_keys = list(active_test.variants.keys())
+        variant_index = hash(seed + "variant") % len(variant_keys)
+        variant_name = variant_keys[variant_index]
+        return {
+            "variant": variant_name,
+            "config": active_test.variants[variant_name],
+            "test_id": active_test.id
+        }
+    else:
+        return {
+            "variant": "control",
+            "config": screen.config,
+            "test_id": active_test.id
+        }
+
+app.include_router(ab_testing_router, prefix="/api/ab-testing", tags=["ab-testing"])
+
+
+templates_router = APIRouter()
+
