@@ -447,4 +447,60 @@ def create_ab_test(test: ABTestCreate, db: Session = Depends(get_db)):
     existing = db.query(ABTest).filter(ABTest.name == test.name).first()
     if existing:
         raise HTTPException(status_code=400, detail="A/B test with this name already exists")
- 
+    
+    db_test = ABTest(**test.model_dump())
+    db.add(db_test)
+    db.commit()
+    db.refresh(db_test)
+    return db_test
+
+@ab_testing_router.get("/{test_id}")
+def get_ab_test(test_id: int, db: Session = Depends(get_db)):
+    test = db.query(ABTest).filter(ABTest.id == test_id).first()
+    if not test:
+        raise HTTPException(status_code=404, detail="A/B test not found")
+    return test
+
+@ab_testing_router.get("/")
+def get_ab_tests(is_active: Optional[bool] = None, db: Session = Depends(get_db)):
+    query = db.query(ABTest)
+    if is_active is not None:
+        query = query.filter(ABTest.is_active == is_active)
+    return query.all()
+
+@ab_testing_router.put("/{test_id}")
+def update_ab_test(test_id: int, test: ABTestUpdate, db: Session = Depends(get_db)):
+    db_test = db.query(ABTest).filter(ABTest.id == test_id).first()
+    if not db_test:
+        raise HTTPException(status_code=404, detail="A/B test not found")
+    
+    update_data = test.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_test, key, value)
+    
+    db.commit()
+    db.refresh(db_test)
+    return db_test
+
+@ab_testing_router.post("/{test_id}/activate")
+def activate_ab_test(test_id: int, db: Session = Depends(get_db)):
+    db_test = db.query(ABTest).filter(ABTest.id == test_id).first()
+    if not db_test:
+        raise HTTPException(status_code=404, detail="A/B test not found")
+    
+    db_test.is_active = True
+    db.commit()
+    db.refresh(db_test)
+    return db_test
+
+@ab_testing_router.post("/{test_id}/deactivate")
+def deactivate_ab_test(test_id: int, db: Session = Depends(get_db)):
+    db_test = db.query(ABTest).filter(ABTest.id == test_id).first()
+    if not db_test:
+        raise HTTPException(status_code=404, detail="A/B test not found")
+    
+    db_test.is_active = False
+    db.commit()
+    db.refresh(db_test)
+    return db_test
+
