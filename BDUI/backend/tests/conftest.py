@@ -556,3 +556,58 @@ app.include_router(ab_testing_router, prefix="/api/ab-testing", tags=["ab-testin
 
 templates_router = APIRouter()
 
+class TemplateCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    config: dict
+    category: str = "general"
+    is_public: bool = True
+    parent_id: Optional[int] = None
+
+class TemplateUpdate(BaseModel):
+    description: Optional[str] = None
+    config: Optional[dict] = None
+    is_public: Optional[bool] = None
+
+@templates_router.post("/")
+def create_template(template: TemplateCreate, db: Session = Depends(get_db)):
+    existing = db.query(Template).filter(Template.name == template.name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Template with this name already exists")
+    
+    db_template = Template(**template.model_dump())
+    db.add(db_template)
+    db.commit()
+    db.refresh(db_template)
+    return db_template
+
+@templates_router.get("/{template_id}")
+def get_template(template_id: int, db: Session = Depends(get_db)):
+    template = db.query(Template).filter(Template.id == template_id).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return template
+
+@templates_router.get("/")
+def get_templates(category: Optional[str] = None, is_public: Optional[bool] = None, db: Session = Depends(get_db)):
+    query = db.query(Template)
+    if category:
+        query = query.filter(Template.category == category)
+    if is_public is not None:
+        query = query.filter(Template.is_public == is_public)
+    return query.all()
+
+@templates_router.put("/{template_id}")
+def update_template(template_id: int, template: TemplateUpdate, db: Session = Depends(get_db)):
+    db_template = db.query(Template).filter(Template.id == template_id).first()
+    if not db_template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    update_data = template.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_template, key, value)
+    
+    db.commit()
+    db.refresh(db_template)
+    return db_template
+
