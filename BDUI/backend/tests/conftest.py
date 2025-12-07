@@ -397,3 +397,54 @@ def get_screen_stats(screen_id: int, db: Session = Depends(get_db)):
         "locale_breakdown": locale_breakdown
     }
 
+@analytics_router.get("/overview")
+def get_overview(db: Session = Depends(get_db)):
+    all_events = db.query(Analytics).all()
+    
+    unique_screens = len(set([e.screen_id for e in all_events]))
+    unique_users = len(set([e.user_id for e in all_events if e.user_id]))
+    
+    screen_views = {}
+    for e in all_events:
+        if e.event_type == "view":
+            screen_views[e.screen_id] = screen_views.get(e.screen_id, 0) + 1
+    
+    top_screens = [{"screen_id": k, "views": v} for k, v in screen_views.items()]
+    
+    return {
+        "total_events": len(all_events),
+        "unique_screens": unique_screens,
+        "unique_users": unique_users,
+        "top_screens": top_screens,
+        "daily_stats": []
+    }
+
+app.include_router(analytics_router, prefix="/api/analytics", tags=["analytics"])
+
+
+ab_testing_router = APIRouter()
+
+class ABTestCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    screen_id: int
+    variants: dict
+    traffic_allocation: float = 0.5
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+
+class ABTestUpdate(BaseModel):
+    description: Optional[str] = None
+    traffic_allocation: Optional[float] = None
+    is_active: Optional[bool] = None
+
+@ab_testing_router.post("/")
+def create_ab_test(test: ABTestCreate, db: Session = Depends(get_db)):
+    screen = db.query(Screen).filter(Screen.id == test.screen_id).first()
+    if not screen:
+        raise HTTPException(status_code=404, detail="Screen not found")
+    
+    existing = db.query(ABTest).filter(ABTest.name == test.name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="A/B test with this name already exists")
+ 
