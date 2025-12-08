@@ -653,3 +653,56 @@ def get_template_categories(db: Session = Depends(get_db)):
 app.include_router(templates_router, prefix="/api/templates", tags=["templates"])
 
 
+@pytest.fixture(scope="function")
+def db_session():
+    """Create a fresh database session for each test"""
+    Base.metadata.create_all(bind=engine)
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture(scope="function")
+def client(db_session):
+    """Create a test client with overridden database dependency"""
+    def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+    
+    app.dependency_overrides[get_db] = override_get_db
+    
+    with TestClient(app) as test_client:
+        yield test_client
+    
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def sample_screen_data():
+    """Sample screen data for testing"""
+    return {
+        "name": "test_screen",
+        "title": "Test Screen",
+        "description": "A test screen",
+        "config": {
+            "components": [
+                {
+                    "id": "header",
+                    "type": "Text",
+                    "props": {
+                        "content": "Hello World",
+                        "variant": "h1"
+                    }
+                }
+            ]
+        },
+        "platform": "web",
+        "locale": "ru"
+    }
+
+
