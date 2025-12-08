@@ -741,3 +741,73 @@ def sample_analytics_data():
     }
 
 
+@pytest.fixture
+def sample_ab_test_data():
+    """Sample A/B test data"""
+    return {
+        "name": "Button Color Test",
+        "description": "Testing button colors",
+        "screen_id": 1,
+        "variants": {
+            "variant_a": {
+                "components": [
+                    {
+                        "id": "btn_a",
+                        "type": "Button",
+                        "props": {"text": "Click A", "variant": "primary"}
+                    }
+                ]
+            },
+            "variant_b": {
+                "components": [
+                    {
+                        "id": "btn_b",
+                        "type": "Button",
+                        "props": {"text": "Click B", "variant": "secondary"}
+                    }
+                ]
+            }
+        },
+        "traffic_allocation": 0.5
+    }
+
+
+@pytest.fixture
+def sample_template_data():
+    """Sample template data"""
+    return {
+        "name": "Card Template",
+        "description": "A reusable card template",
+        "category": "layout",
+        "config": {
+            "type": "Card",
+            "props": {"padding": "medium"},
+            "children": [
+                {
+                    "type": "Text",
+                    "props": {"content": "{{title}}", "variant": "h3"}
+                }
+            ]
+        }
+    }
+
+
+@pytest.fixture
+def created_screen(client, sample_screen_data):
+    """Create a screen for testing"""
+    response = client.post("/api/screens/", json=sample_screen_data)
+    return response.json()
+
+
+@pytest.fixture
+def created_component(client, sample_component_data):
+    """Create a component for testing"""
+    response = client.post("/api/components/", json=sample_component_data)
+    return response.json()
+
+
+@pytest.fixture
+def created_template(client, sample_template_data):
+    """Create a template for testing"""
+    response = client.post("/api/templates/", json=sample_template_data)
+    return response.json()
