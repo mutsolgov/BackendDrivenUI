@@ -611,3 +611,45 @@ def update_template(template_id: int, template: TemplateUpdate, db: Session = De
     db.refresh(db_template)
     return db_template
 
+@templates_router.delete("/{template_id}")
+def delete_template(template_id: int, db: Session = Depends(get_db)):
+    db_template = db.query(Template).filter(Template.id == template_id).first()
+    if not db_template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    children = db.query(Template).filter(Template.parent_id == template_id).first()
+    if children:
+        raise HTTPException(status_code=400, detail="Cannot delete template with children")
+    
+    db.delete(db_template)
+    db.commit()
+    return {"message": "Template deleted successfully"}
+
+@templates_router.post("/{template_id}/inherit")
+def inherit_template(template_id: int, new_name: str, db: Session = Depends(get_db)):
+    parent = db.query(Template).filter(Template.id == template_id).first()
+    if not parent:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    new_template = Template(
+        name=new_name,
+        description=parent.description,
+        config=parent.config,
+        category=parent.category,
+        is_public=False,
+        parent_id=parent.id
+    )
+    db.add(new_template)
+    db.commit()
+    db.refresh(new_template)
+    return new_template
+
+@templates_router.get("/categories/list")
+def get_template_categories(db: Session = Depends(get_db)):
+    templates = db.query(Template).all()
+    categories = list(set([t.category for t in templates]))
+    return categories
+
+app.include_router(templates_router, prefix="/api/templates", tags=["templates"])
+
+
