@@ -706,3 +706,38 @@ def sample_screen_data():
     }
 
 
+@pytest.fixture
+def sample_component_data():
+    """Sample component data for testing"""
+    return {
+        "name": "TestButton",
+        "type": "button",
+        "category": "basic",
+        "config": {
+            "defaultProps": {
+                "text": "Click me",
+                "variant": "primary"
+            }
+        },
+        "props_schema": {
+            "text": {"type": "string", "required": True},
+            "variant": {"type": "enum", "values": ["primary", "secondary"]}
+        }
+    }
+
+
+@pytest.fixture
+def sample_analytics_data():
+    """Sample analytics event data"""
+    return {
+        "screen_id": 1,
+        "component_id": "button_1",
+        "event_type": "click",
+        "user_id": "user_123",
+        "session_id": "session_456",
+        "platform": "web",
+        "locale": "ru",
+        "data": {"extra": "info"}
+    }
+
+
